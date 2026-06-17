@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/mf/**)",
+      "Bash(npx create-next-app@latest jorrey --typescript --tailwind --eslint --src-dir --app)"
+    ]
+  }
+}
