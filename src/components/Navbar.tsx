@@ -3,17 +3,28 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { useLocale } from "next-intl";
+import { ShoppingBag, User } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { useCart } from "./CartProvider";
+import CustomerAccountModal from "./CustomerAccountModal";
+import type { Category } from "@/lib/category-types";
 
-const links = [
-  { label: "Collections", href: "#collections" },
-  { label: "About", href: "#about" },
-  { label: "Journal", href: "#journal" },
-  { label: "Contact", href: "#contact" },
-];
+interface NavbarProps {
+  whatsappNumber?: string;
+  currencySymbol?: string;
+  categories?: Category[];
+}
 
-export default function Navbar() {
+export default function Navbar({ categories = [] }: NavbarProps) {
+  const locale = useLocale();
+  const isRTL = locale === "ar";
+  const { count, setOpen } = useCart();
+  const { user } = useUser();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 40);
@@ -34,54 +45,87 @@ export default function Navbar() {
         }`}
       >
         <div className="max-w-7xl mx-auto px-6 lg:px-10 h-20 flex items-center justify-between">
+          {/* Logo */}
           <Link
             href="/"
-            className="font-serif text-2xl tracking-[0.15em] text-jorrey-white font-medium"
+            className="font-serif text-2xl tracking-[0.15em] text-jorrey-white font-medium flex-shrink-0"
           >
             JORREY
           </Link>
 
-          <nav className="hidden md:flex items-center gap-10">
-            {links.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                className="text-jorrey-white/70 hover:text-jorrey-gold text-sm tracking-widest uppercase transition-colors duration-300"
-              >
-                {link.label}
-              </a>
-            ))}
-          </nav>
+          {/* Desktop nav — DB categories */}
+          {categories.length > 0 && (
+            <nav className="hidden md:flex items-center gap-8" dir={isRTL ? "rtl" : "ltr"}>
+              {categories.map((cat) => {
+                const label = isRTL && cat.nameAr ? cat.nameAr : cat.name;
+                return (
+                  <Link
+                    key={cat.id}
+                    href={`/category/${cat.slug}`}
+                    className="text-jorrey-white/70 hover:text-jorrey-gold text-xs tracking-widests uppercase transition-colors duration-300"
+                  >
+                    {label}
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
 
-          <div className="hidden md:flex items-center gap-6">
-            <a
-              href="#signup"
-              className="text-sm tracking-widest uppercase text-jorrey-gold border border-jorrey-gold/50 px-5 py-2 hover:bg-jorrey-gold hover:text-jorrey-black transition-all duration-300"
+          {/* Desktop right: language | cart | account */}
+          <div className="hidden md:flex items-center gap-5">
+            <LanguageSwitcher />
+            <button
+              onClick={() => setOpen(true)}
+              className="relative text-jorrey-white/70 hover:text-jorrey-gold transition-colors"
+              aria-label="Open cart"
             >
-              Shop
-            </a>
+              <ShoppingBag size={18} />
+              {count > 0 && (
+                <span className="absolute -top-1.5 -end-1.5 bg-jorrey-gold text-jorrey-black text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  {count > 9 ? "9+" : count}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setAccountOpen(true)}
+              className={`transition-colors ${user ? "text-jorrey-gold" : "text-jorrey-white/70 hover:text-jorrey-gold"}`}
+              aria-label="Account"
+            >
+              <User size={18} />
+            </button>
           </div>
 
-          <button
-            className="md:hidden text-jorrey-white"
-            onClick={() => setMenuOpen((v) => !v)}
-            aria-label="Toggle menu"
-          >
-            <div className="flex flex-col gap-1.5 w-6">
-              <span
-                className={`block h-px bg-jorrey-white transition-all duration-300 ${menuOpen ? "rotate-45 translate-y-2.5" : ""}`}
-              />
-              <span
-                className={`block h-px bg-jorrey-white transition-all duration-300 ${menuOpen ? "opacity-0" : ""}`}
-              />
-              <span
-                className={`block h-px bg-jorrey-white transition-all duration-300 ${menuOpen ? "-rotate-45 -translate-y-2.5" : ""}`}
-              />
-            </div>
-          </button>
+          {/* Mobile: language + cart + hamburger */}
+          <div className="md:hidden flex items-center gap-4">
+            <LanguageSwitcher />
+            <button
+              onClick={() => setOpen(true)}
+              className="relative text-jorrey-white/70 hover:text-jorrey-gold transition-colors"
+              aria-label="Open cart"
+            >
+              <ShoppingBag size={18} />
+              {count > 0 && (
+                <span className="absolute -top-1.5 -end-1.5 bg-jorrey-gold text-jorrey-black text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  {count > 9 ? "9+" : count}
+                </span>
+              )}
+            </button>
+            <button
+              className="text-jorrey-white"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label="Toggle menu"
+            >
+              <div className="flex flex-col gap-1.5 w-6">
+                <span className={`block h-px bg-jorrey-white transition-all duration-300 ${menuOpen ? "rotate-45 translate-y-2.5" : ""}`} />
+                <span className={`block h-px bg-jorrey-white transition-all duration-300 ${menuOpen ? "opacity-0" : ""}`} />
+                <span className={`block h-px bg-jorrey-white transition-all duration-300 ${menuOpen ? "-rotate-45 -translate-y-2.5" : ""}`} />
+              </div>
+            </button>
+          </div>
         </div>
       </motion.header>
 
+      {/* Mobile full-screen menu */}
       <AnimatePresence>
         {menuOpen && (
           <motion.div
@@ -91,22 +135,49 @@ export default function Navbar() {
             transition={{ duration: 0.3 }}
             className="fixed inset-0 z-40 bg-jorrey-black flex flex-col items-center justify-center gap-10 md:hidden"
           >
-            {links.map((link, i) => (
-              <motion.a
-                key={link.label}
-                href={link.href}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.07 }}
+            {categories.length > 0 ? (
+              categories.map((cat, i) => {
+                const label = isRTL && cat.nameAr ? cat.nameAr : cat.name;
+                return (
+                  <motion.div
+                    key={cat.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.07 }}
+                  >
+                    <Link
+                      href={`/category/${cat.slug}`}
+                      onClick={() => setMenuOpen(false)}
+                      className="font-serif text-3xl text-jorrey-white hover:text-jorrey-gold italic transition-colors"
+                    >
+                      {label}
+                    </Link>
+                  </motion.div>
+                );
+              })
+            ) : (
+              <Link
+                href="/#collections"
                 onClick={() => setMenuOpen(false)}
                 className="font-serif text-3xl text-jorrey-white hover:text-jorrey-gold italic transition-colors"
               >
-                {link.label}
-              </motion.a>
-            ))}
+                Shop
+              </Link>
+            )}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
+              <button
+                onClick={() => { setMenuOpen(false); setAccountOpen(true); }}
+                className={`flex items-center gap-2 text-sm tracking-widests uppercase transition-colors ${user ? "text-jorrey-gold" : "text-jorrey-white/50 hover:text-jorrey-gold"}`}
+              >
+                <User size={14} />
+                Account
+              </button>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      <CustomerAccountModal open={accountOpen} onClose={() => setAccountOpen(false)} />
     </>
   );
 }

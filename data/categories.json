@@ -1,0 +1,88 @@
+[
+  {
+    "id": "outerwear",
+    "name": "Formal Dress",
+    "nameAr": "ملابس رسمية",
+    "slug": "outerwear",
+    "visible": true,
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedAt": "2026-06-19T11:44:02.991Z",
+    "image": "/products/1781869440119-0d16cmrsalav.png",
+    "description": "The dresses you'll reach for again and again. Explore effortless midi dresses, occasion styles and everyday favourites designed to move with you. Crafted for modern life and exceptional versatility, these are dresses that feel as good as they look.",
+    "descriptionAr": "The dresses you'll reach for again and again. Explore effortless midi dresses, occasion styles and everyday favourites designed to move with you. Crafted for modern life and exceptional versatility, these are dresses that feel as good as they look.",
+    "filtersEnabled": true,
+    "order": 0
+  },
+  {
+    "id": "dresses",
+    "name": "Dresses",
+    "nameAr": "الفساتين",
+    "slug": "dresses",
+    "visible": true,
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedAt": "2026-06-19T11:47:56.084Z",
+    "image": "/products/1781869674453-rd9f0rkova.png",
+    "filtersEnabled": true,
+    "order": 1
+  },
+  {
+    "id": "tops",
+    "name": "Tops",
+    "nameAr": "الجزء العلوي",
+    "slug": "tops",
+    "visible": true,
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedAt": "2026-06-19T11:59:59.364Z",
+    "image": "/products/1781869974650-ku3xpzk7bb.png",
+    "filtersEnabled": true,
+    "order": 2
+  },
+  {
+    "id": "bottoms",
+    "name": "Bottoms",
+    "nameAr": "السراويل والتنانير",
+    "slug": "bottoms",
+    "visible": true,
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedAt": "2026-06-19T12:00:13.478Z",
+    "image": "/products/1781870411759-yqcrlqxaw2.png",
+    "filtersEnabled": true,
+    "order": 3
+  },
+  {
+    "id": "accessories",
+    "name": "SkinCare",
+    "nameAr": "العناية بالبشره ",
+    "slug": "skincare",
+    "visible": true,
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedAt": "2026-06-19T12:37:55.018Z",
+    "image": "/products/1781872668093-s83221y48hc.png",
+    "order": 6,
+    "filtersEnabled": true
+  },
+  {
+    "id": "coats",
+    "name": "Coats",
+    "nameAr": "المعاطف",
+    "slug": "coats",
+    "visible": true,
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedAt": "2026-06-19T12:02:37.803Z",
+    "image": "/products/1781870556309-wt8mrdwprp.png",
+    "filtersEnabled": true,
+    "order": 4
+  },
+  {
+    "id": "knitwear",
+    "name": "Knitwear",
+    "nameAr": "الصوف والتريكو",
+    "slug": "knitwear",
+    "visible": true,
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedAt": "2026-06-19T12:06:23.325Z",
+    "image": "/products/1781870780155-61mxkfxzv2u.png",
+    "filtersEnabled": true,
+    "order": 5
+  }
+]

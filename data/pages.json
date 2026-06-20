@@ -1,0 +1,95 @@
+{
+  "home": {
+    "sections": [
+      {
+        "id": "hero",
+        "name": "Hero",
+        "nameAr": "البطل",
+        "visible": true,
+        "order": 0,
+        "image": "/products/1781783067416-4spjgj6y35h.webp"
+      },
+      {
+        "id": "collections",
+        "name": "Collections",
+        "nameAr": "المجموعات",
+        "visible": true,
+        "order": 1
+      },
+      {
+        "id": "testimonials",
+        "name": "Testimonials",
+        "nameAr": "آراء العملاء",
+        "visible": false,
+        "order": 2
+      },
+      {
+        "id": "cta",
+        "name": "Call to Action",
+        "nameAr": "دعوة للعمل",
+        "visible": false,
+        "order": 3
+      },
+      {
+        "id": "email",
+        "name": "Signup",
+        "nameAr": "الاشتراك بالبريد",
+        "visible": false,
+        "order": 4
+      }
+    ]
+  },
+  "custom": [
+    {
+      "title": "Clearance",
+      "titleAr": "",
+      "slug": "t",
+      "visible": true,
+      "homeSectionId": "hero",
+      "id": "721fe54e-9b05-401d-ad6c-d1de8d282f49",
+      "sections": [],
+      "createdAt": "2026-06-19T16:16:41.699Z",
+      "updatedAt": "2026-06-19T16:16:48.685Z"
+    },
+    {
+      "title": "Limited Edition",
+      "titleAr": "",
+      "slug": "limited-edition",
+      "visible": true,
+      "id": "ca4a0106-3488-4eef-bbcc-80e6e3789d71",
+      "sections": [],
+      "createdAt": "2026-06-20T11:08:09.204Z",
+      "updatedAt": "2026-06-20T11:08:12.234Z"
+    },
+    {
+      "title": "New Arrival",
+      "titleAr": "",
+      "slug": "new-arrival",
+      "visible": true,
+      "id": "f2c852b0-4466-43c7-8f6b-4a0152aacd3e",
+      "sections": [],
+      "createdAt": "2026-06-20T11:11:15.502Z",
+      "updatedAt": "2026-06-20T11:11:17.129Z"
+    },
+    {
+      "title": "Featured Product",
+      "titleAr": "",
+      "slug": "featured-product",
+      "visible": true,
+      "id": "0743ff44-cd11-40fb-9393-a52589dd7953",
+      "sections": [],
+      "createdAt": "2026-06-20T11:24:29.288Z",
+      "updatedAt": "2026-06-20T11:24:32.610Z"
+    },
+    {
+      "title": "On Sale",
+      "titleAr": "",
+      "slug": "on-sale",
+      "visible": true,
+      "id": "00c22bdd-4fa5-4937-b6fe-e7c053eac203",
+      "sections": [],
+      "createdAt": "2026-06-20T11:25:59.497Z",
+      "updatedAt": "2026-06-20T11:26:01.419Z"
+    }
+  ]
+}

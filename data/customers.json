@@ -1,0 +1,17 @@
+[
+  {
+    "email": "faisalmustafa020@outlook.com",
+    "firstName": "mustafa",
+    "lastName": "faisal",
+    "phone": "7036781557",
+    "address": {
+      "street": "Twaisa",
+      "city": "Basra",
+      "district": "Twisa",
+      "country": "Iraq"
+    },
+    "id": "user_3FJkCkyZVIDSaAoSgITM2bwFIMW",
+    "createdAt": "2026-06-18T18:22:40.921Z",
+    "updatedAt": "2026-06-18T19:46:50.253Z"
+  }
+]

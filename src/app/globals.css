@@ -36,3 +36,14 @@ body {
 html {
   scroll-behavior: smooth;
 }
+
+/* Switch to Cairo for all text in Arabic mode */
+html[lang="ar"] body {
+  font-family: var(--font-cairo), Arial, sans-serif;
+}
+
+html[lang="ar"] .font-serif {
+  font-family: var(--font-cairo), serif;
+  font-style: normal;
+  letter-spacing: 0;
+}

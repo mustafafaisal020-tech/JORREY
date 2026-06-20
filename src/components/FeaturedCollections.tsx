@@ -1,134 +1,208 @@
 "use client";
 
+import { useRef } from "react";
 import { motion } from "framer-motion";
-import ProductCard, { Product } from "./ProductCard";
+import { useTranslations, useLocale } from "next-intl";
+import Link from "next/link";
+import Image from "next/image";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import ProductCard from "./ProductCard";
+import type { Product } from "@/lib/product-types";
+import type { Category } from "@/lib/category-types";
 
-const collections = [
-  {
-    id: "noir",
-    name: "The Noir Edit",
-    description: "Timeless blacks, charcoals, and deep navies.",
-    bg: "linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #0a0a0a 100%)",
-  },
-  {
-    id: "desert",
-    name: "Desert Rose",
-    description: "Warm sands, dusty roses, and terracotta warmth.",
-    bg: "linear-gradient(135deg, #c4a882 0%, #d4b896 50%, #b89060 100%)",
-  },
-  {
-    id: "golden",
-    name: "Golden Hour",
-    description: "Rich golds, creams, and sun-burnished amber.",
-    bg: "linear-gradient(135deg, #c9a96e 0%, #e2c99a 50%, #a8833e 100%)",
-  },
+const CATEGORY_GRADIENTS = [
+  "linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #0a0a0a 100%)",
+  "linear-gradient(135deg, #c4a882 0%, #d4b896 50%, #b89060 100%)",
+  "linear-gradient(135deg, #c9a96e 0%, #e2c99a 50%, #a8833e 100%)",
+  "linear-gradient(135deg, #3d2b1f 0%, #6b4226 50%, #2a1a10 100%)",
+  "linear-gradient(135deg, #4a4a6a 0%, #6a6a9a 50%, #2a2a4a 100%)",
+  "linear-gradient(135deg, #2d4a2d 0%, #4a7a4a 50%, #1a2d1a 100%)",
 ];
 
-const products: Product[] = [
-  {
-    id: "p1",
-    name: "Silk Noir Blazer",
-    category: "Outerwear",
-    price: 1850,
-    bgColor: "linear-gradient(160deg, #1c1c1c 0%, #333 100%)",
-    isNew: true,
-  },
-  {
-    id: "p2",
-    name: "Cashmere Wrap Coat",
-    category: "Coats",
-    price: 3200,
-    bgColor: "linear-gradient(160deg, #c4a882 0%, #a08060 100%)",
-  },
-  {
-    id: "p3",
-    name: "Gold-Trim Trench",
-    category: "Outerwear",
-    price: 2450,
-    bgColor: "linear-gradient(160deg, #d4c4a0 0%, #b89a70 100%)",
-    isNew: true,
-  },
-  {
-    id: "p4",
-    name: "Noir Silk Dress",
-    category: "Dresses",
-    price: 1650,
-    bgColor: "linear-gradient(160deg, #0a0a0a 0%, #2a2a2a 100%)",
-  },
-];
+interface Props {
+  whatsappNumber?: string;
+  currencySymbol?: string;
+  products?: Product[];
+  categories?: Category[];
+  collectionsTitle?: string;
+  collectionsTitleAr?: string;
+  collectionsDescription?: string;
+  collectionsDescriptionAr?: string;
+}
 
-export default function FeaturedCollections() {
+export default function FeaturedCollections({
+  whatsappNumber = "",
+  currencySymbol = "$",
+  products = [],
+  categories = [],
+  collectionsTitle,
+  collectionsTitleAr,
+  collectionsDescription,
+  collectionsDescriptionAr,
+}: Props) {
+  const t = useTranslations("collections");
+  const locale = useLocale();
+  const isRTL = locale === "ar";
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const title = (isRTL ? collectionsTitleAr : collectionsTitle) || t("title");
+  const description = (isRTL ? collectionsDescriptionAr : collectionsDescription) || "";
+
+  function scroll(dir: "left" | "right") {
+    if (!scrollRef.current) return;
+    const amount = 300;
+    scrollRef.current.scrollBy({
+      left: (isRTL ? -1 : 1) * (dir === "left" ? -amount : amount),
+      behavior: "smooth",
+    });
+  }
+
   return (
-    <section id="collections" className="bg-jorrey-white py-28 px-6 lg:px-10">
+    <section id="collections" className="bg-jorrey-white py-24 px-6 lg:px-10">
       <div className="max-w-7xl mx-auto">
-        {/* Section header */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.7 }}
-          className="text-center mb-20"
-        >
-          <p className="text-jorrey-gold text-xs tracking-[0.35em] uppercase mb-4">
-            Curated for You
-          </p>
-          <h2 className="font-serif text-5xl md:text-6xl text-jorrey-black leading-tight">
-            The Collections
-          </h2>
-        </motion.div>
 
-        {/* Collection cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-28">
-          {collections.map((col, i) => (
+        {/* ── Two-column: left label + right horizontal slides ── */}
+        <div className={`flex items-start gap-12 lg:gap-20 ${isRTL ? "flex-row-reverse" : ""}`}>
+
+          {/* Left column — sticky label */}
+          <div className="flex-shrink-0 w-56 lg:w-64 pt-2">
             <motion.div
-              key={col.id}
-              initial={{ opacity: 0, y: 40 }}
+              initial={{ opacity: 0, x: isRTL ? 30 : -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.7 }}
+            >
+              <p className="text-jorrey-gold text-xs tracking-[0.35em] uppercase mb-4">
+                {t("eyebrow")}
+              </p>
+              <h2 className="font-serif text-4xl lg:text-5xl text-jorrey-black leading-tight mb-6">
+                {title}
+              </h2>
+              {description && (
+                <p className="text-gray-500 text-sm leading-relaxed mb-8">
+                  {description}
+                </p>
+              )}
+              <Link
+                href="/explore"
+                className="text-jorrey-gold text-xs tracking-[0.25em] uppercase border-b border-jorrey-gold/50 pb-px hover:border-jorrey-gold transition-colors"
+              >
+                {t("explore")}
+              </Link>
+            </motion.div>
+          </div>
+
+          {/* Right column — horizontal scroll */}
+          <div className="flex-1 min-w-0">
+            <div className="relative">
+              {/* Scroll arrows */}
+              {categories.length > 2 && (
+                <div className={`absolute -top-10 flex gap-2 ${isRTL ? "left-0" : "right-0"}`}>
+                  <button
+                    type="button"
+                    onClick={() => scroll("left")}
+                    className="w-8 h-8 border border-gray-200 flex items-center justify-center text-gray-400 hover:border-jorrey-black hover:text-jorrey-black transition-colors"
+                    aria-label="Scroll left"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => scroll("right")}
+                    className="w-8 h-8 border border-gray-200 flex items-center justify-center text-gray-400 hover:border-jorrey-black hover:text-jorrey-black transition-colors"
+                    aria-label="Scroll right"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              )}
+
+              {/* Scrollable track */}
+              <div
+                ref={scrollRef}
+                className="flex gap-4 overflow-x-auto pb-4 scroll-smooth"
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+              >
+                {categories.map((cat, i) => {
+                  const displayName = isRTL && cat.nameAr ? cat.nameAr : cat.name;
+                  const gradient = CATEGORY_GRADIENTS[i % CATEGORY_GRADIENTS.length];
+                  return (
+                    <motion.div
+                      key={cat.id}
+                      initial={{ opacity: 0, y: 30 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.6, delay: i * 0.07 }}
+                      className="flex-shrink-0"
+                      style={{ width: 220 }}
+                    >
+                      <Link
+                        href={`/category/${cat.slug}`}
+                        className="group block relative overflow-hidden"
+                        style={{ height: 300 }}
+                      >
+                        <div
+                          className="absolute inset-0 transition-transform duration-700 group-hover:scale-105"
+                          style={{ background: cat.image ? undefined : gradient }}
+                        >
+                          {cat.image && (
+                            <Image
+                              src={cat.image}
+                              alt={displayName}
+                              fill
+                              sizes="220px"
+                              className="object-cover transition-transform duration-700 group-hover:scale-105"
+                            />
+                          )}
+                        </div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-jorrey-black/70 via-transparent to-transparent flex items-end p-5">
+                          <div>
+                            <h3 className="font-serif text-xl text-jorrey-white mb-2 leading-tight">
+                              {displayName}
+                            </h3>
+                            <span className="text-jorrey-gold text-[10px] tracking-[0.25em] uppercase border-b border-jorrey-gold/50 pb-px group-hover:border-jorrey-gold transition-colors">
+                              {t("explore")}
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Featured products ── */}
+        {products.length > 0 && (
+          <div className="mt-28">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.7, delay: i * 0.1 }}
-              className="group cursor-pointer relative overflow-hidden"
+              className="text-center mb-12"
             >
-              <div
-                className="h-80 md:h-96 transition-transform duration-700 group-hover:scale-105"
-                style={{ background: col.bg }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-jorrey-black/70 to-transparent flex items-end p-8">
-                <div>
-                  <h3 className="font-serif text-2xl text-jorrey-white mb-2">
-                    {col.name}
-                  </h3>
-                  <p className="text-jorrey-white/60 text-sm font-sans leading-relaxed mb-4">
-                    {col.description}
-                  </p>
-                  <span className="text-jorrey-gold text-xs tracking-widest uppercase border-b border-jorrey-gold/50 pb-px group-hover:border-jorrey-gold transition-colors">
-                    Explore →
-                  </span>
-                </div>
-              </div>
+              <p className="text-jorrey-gold text-xs tracking-[0.35em] uppercase mb-4">
+                {t("products_eyebrow")}
+              </p>
+              <h2 className="font-serif text-4xl md:text-5xl text-jorrey-black">
+                {t("products_title")}
+              </h2>
             </motion.div>
-          ))}
-        </div>
 
-        {/* Product grid */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-12"
-        >
-          <p className="text-jorrey-gold text-xs tracking-[0.35em] uppercase mb-4">
-            Hand-Picked
-          </p>
-          <h2 className="font-serif text-4xl md:text-5xl text-jorrey-black">
-            Featured Pieces
-          </h2>
-        </motion.div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+            <div className="grid gap-6 md:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              {products.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  whatsappNumber={whatsappNumber}
+                  currencySymbol={currencySymbol}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

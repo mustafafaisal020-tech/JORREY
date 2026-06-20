@@ -1,0 +1,79 @@
+{
+  "whatsappNumber": "7036781557",
+  "currency": "$",
+  "currencySymbol": "$",
+  "siteName": "Jorrey",
+  "socialLinks": [
+    {
+      "id": "1cltvw05cxr",
+      "label": "Instagram",
+      "url": "https://www.instagram.com/jorrey.s.c"
+    },
+    {
+      "id": "r59l8bzor6",
+      "label": "Tiktok",
+      "url": "https://www.tiktok.com/@jorrey.llc"
+    }
+  ],
+  "footer": {
+    "bgColor": "black",
+    "connectLabel": "Follow us",
+    "companyLabel": "useful links",
+    "companyItems": [
+      {
+        "id": "4xgjwusg",
+        "label": "New Arrival",
+        "labelAr": "",
+        "url": "/new-arrival",
+        "pageId": "f2c852b0-4466-43c7-8f6b-4a0152aacd3e",
+        "visible": true,
+        "order": 0,
+        "children": []
+      },
+      {
+        "id": "0c9vm1v8",
+        "label": "Limited Edition",
+        "labelAr": "",
+        "url": "/limited-edition",
+        "pageId": "ca4a0106-3488-4eef-bbcc-80e6e3789d71",
+        "visible": true,
+        "order": 1,
+        "children": []
+      },
+      {
+        "id": "sye8jh7d",
+        "label": "Featured Product",
+        "labelAr": "",
+        "url": "/featured-product",
+        "pageId": "0743ff44-cd11-40fb-9393-a52589dd7953",
+        "visible": true,
+        "order": 2,
+        "children": []
+      },
+      {
+        "id": "hgdvuxb5",
+        "label": "On Sale",
+        "labelAr": "",
+        "url": "/on-sale",
+        "pageId": "00c22bdd-4fa5-4937-b6fe-e7c053eac203",
+        "visible": true,
+        "order": 3,
+        "children": []
+      },
+      {
+        "id": "3f7gwaot",
+        "label": "Clearance",
+        "labelAr": "",
+        "url": "/t",
+        "pageId": "721fe54e-9b05-401d-ad6c-d1de8d282f49",
+        "visible": true,
+        "order": 4,
+        "children": []
+      }
+    ]
+  },
+  "collectionsDescription": "Discover timeless pieces crafted with precision and elegance. “The Collection” brings together refined fabrics, modern silhouettes, and sustainable design, offering effortless luxury for every occasion.",
+  "collectionsDescriptionAr": "اكتشف القطع  المصنوعة بدقة وأناقة. تجمع \"المجموعة\" بين الأقمشة الراقية والصور الظلية الحديثة والتصميم المستدام , مما يوفر فخامة سهلة في كل مناسبة.",
+  "collectionsTitle": "The Collection",
+  "collectionsTitleAr": "المجموعة"
+}

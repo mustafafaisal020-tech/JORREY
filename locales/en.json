@@ -1,0 +1,196 @@
+{
+    "nav": {
+        "collections": "Collections",
+        "about": "About",
+        "journal": "Journal",
+        "contact": "Contact",
+        "shop": "Shop"
+    },
+    "hero": {
+        "season": "New Season — 2025",
+        "line1": "Elegance",
+        "line2": "Designed",
+        "line3": "for You",
+        "subtitle": "Curated luxury pieces for the discerning few.",
+        "shop": "Shop Now",
+        "story": "Our Story",
+        "scroll": "Scroll"
+    },
+    "collections": {
+        "eyebrow": "Curated for You",
+        "title": "The Collections",
+        "explore": "Explore →",
+        "noir_name": "The Noir Edit",
+        "noir_desc": "Timeless blacks, charcoals, and deep navies.",
+        "desert_name": "Desert Rose",
+        "desert_desc": "Warm sands, dusty roses, and terracotta warmth.",
+        "golden_name": "Golden Hour",
+        "golden_desc": "Rich golds, creams, and sun-burnished amber.",
+        "products_eyebrow": "Hand-Picked",
+        "products_title": "Featured Pieces",
+        "add_to_bag": "Add to Bag"
+    },
+    "testimonials": {
+        "eyebrow": "The Jorrey Experience",
+        "title": "What They Say",
+        "quote1": "Jorrey pieces are unlike anything I've worn before. The craftsmanship is flawless — every detail feels intentional.",
+        "name1": "Isabelle M.",
+        "role1": "Creative Director, Paris",
+        "quote2": "I wore the Silk Noir Blazer to a gala and received compliments all evening. Jorrey is my secret weapon.",
+        "name2": "Nadia K.",
+        "role2": "Architect & Style Enthusiast",
+        "quote3": "The quality speaks for itself. These are garments you keep for decades, not seasons.",
+        "name3": "Celeste R.",
+        "role3": "Editor-at-Large"
+    },
+    "cta": {
+        "eyebrow": "2025 Collection",
+        "line1": "The New Collection",
+        "line2": "Has Arrived.",
+        "desc": "Refined silhouettes, rare fabrics, and details that reward attention. Discover the season's most anticipated pieces.",
+        "button": "Shop the Collection"
+    },
+    "email": {
+        "eyebrow": "Exclusive Access",
+        "title": "Join the",
+        "accent": "Inner Circle",
+        "desc": "Be the first to discover new collections, private events, and stories from behind the atelier.",
+        "placeholder": "Your email address",
+        "button": "Subscribe",
+        "success_title": "Welcome to Jorrey.",
+        "success_sub": "You're now part of something rare."
+    },
+    "category": {
+        "collection": "Collection",
+        "empty": "No products in this category yet.",
+        "filter_title": "Filter",
+        "clear_filters": "Clear All",
+        "no_results": "No products match the selected filters."
+    },
+    "sale": {
+        "eyebrow": "Limited Time",
+        "title": "On Sale",
+        "empty": "No products on sale right now."
+    },
+    "new_arrival": {
+        "eyebrow": "Just Arrived",
+        "title": "New Arrivals",
+        "empty": "No new arrivals right now."
+    },
+    "clearance": {
+        "eyebrow": "Final Stock",
+        "title": "Clearance",
+        "empty": "No clearance items right now."
+    },
+    "limited_edition": {
+        "eyebrow": "Exclusive",
+        "title": "Limited Edition",
+        "empty": "No limited edition pieces right now."
+    },
+    "featured": {
+        "eyebrow": "Hand-Picked",
+        "title": "Featured Products",
+        "empty": "No featured products right now."
+    },
+    "product": {
+        "color": "Color",
+        "sku": "SKU",
+        "details": "Details",
+        "one_size": "One Size",
+        "select_size": "Select Size",
+        "size_required": "Please choose a size",
+        "subpages": "Also in this section"
+    },
+    "cart": {
+        "title": "Your Bag",
+        "empty": "Your bag is empty.",
+        "total": "Total",
+        "checkout": "Checkout",
+        "buy_now": "Buy Now",
+        "select_size": "Select Size",
+        "add_to_bag": "Add to Bag"
+    },
+    "checkout": {
+        "title": "Complete Your Order",
+        "total": "Order Total",
+        "delivery_info": "Delivery Details",
+        "name": "Full Name",
+        "country": "Country",
+        "city": "City",
+        "district": "District",
+        "street": "Street Address",
+        "zip": "ZIP Code (optional)",
+        "whatsapp_cta": "Order via WhatsApp",
+        "edit_address": "Edit",
+        "confirm_order": "Confirm & Order via WhatsApp",
+        "saved_address": "Saved Address"
+    },
+    "account": {
+        "title": "My Account",
+        "sign_in": "Sign In",
+        "register": "Create Account",
+        "sign_out": "Sign Out",
+        "profile": "Profile",
+        "first_name": "First Name",
+        "last_name": "Last Name",
+        "email": "Email",
+        "phone": "Phone (optional)",
+        "address_section": "Delivery Address",
+        "street": "Street Address",
+        "city": "City",
+        "district": "District",
+        "country": "Country",
+        "zip": "ZIP Code (optional)",
+        "save": "Save Profile",
+        "saved": "Saved",
+        "saving": "Saving…",
+        "verify_title": "Verify Your Email",
+        "verify_desc": "We sent a code to {email}. Enter it below.",
+        "verify_placeholder": "6-digit code",
+        "verify_btn": "Verify Email",
+        "verifying": "Verifying…",
+        "password": "Password",
+        "signing_in": "Signing in…",
+        "creating": "Creating account…"
+    },
+    "footer": {
+        "collections": "Collections",
+        "tagline": "Luxury fashion crafted with intention. Designed for those who understand that true elegance is timeless.",
+        "shop": "Shop",
+        "company": "Company",
+        "connect": "Connect",
+        "copyright": "All rights reserved.",
+        "new_arrivals": "New Arrivals",
+        "bestsellers": "Bestsellers",
+        "sale": "Sale",
+        "our_story": "Our Story",
+        "atelier": "Atelier",
+        "journal": "Journal",
+        "sustainability": "Sustainability",
+        "contact": "Contact",
+        "instagram": "Instagram",
+        "pinterest": "Pinterest",
+        "press": "Press",
+        "privacy": "Privacy Policy",
+        "terms": "Terms of Service",
+        "shipping": "Shipping"
+    },
+    "filters": {
+        "size": "Size",
+        "color": "Color",
+        "pattern": "Pattern",
+        "product_type": "Product Type",
+        "price": "Price",
+        "max_price": "Max price",
+        "availability": "Availability",
+        "in_stock": "In Stock",
+        "skincare_type": "Product Type",
+        "cleanser": "Cleanser",
+        "exfoliant": "Exfoliant",
+        "serum": "Serum",
+        "moisturizers": "Moisturizers",
+        "creams": "Creams",
+        "skin_brightening": "Skin Brightening",
+        "spf": "SPF"
+    }
+}
