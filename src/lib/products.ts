@@ -16,15 +16,29 @@ function normalize(raw: Record<string, unknown>): Product {
       : rawImage
       ? [rawImage]
       : [];
+
+  // Migrate old per-boolean status fields → status array
+  let status: string[] = Array.isArray(raw.status) ? [...(raw.status as string[])] : [];
+  if (status.length === 0) {
+    if (raw.featured) status.push("Featured");
+    if (raw.onSale) status.push("On Sale");
+    if (raw.newArrival) status.push("New Arrival");
+    if (raw.clearance) status.push("Clearance");
+    if (raw.limitedEdition) status.push("Limited Edition");
+  }
+
+  // Migrate old bottleSizeMl → ml
+  const ml = (raw.ml as number | undefined) ?? (raw.bottleSizeMl as number | undefined);
+
   return {
     summary: "",
-    featured: false,
-    onSale: false,
     inStock: true,
     ...(raw as Partial<Product>),
     images,
     image: images[0] ?? "",
     sizes: Array.isArray(raw.sizes) ? (raw.sizes as string[]) : [],
+    status: status as Product["status"],
+    ml,
   } as Product;
 }
 
@@ -58,31 +72,31 @@ export async function getProducts(search?: string, category?: string): Promise<P
 
 export async function getSaleProducts(): Promise<Product[]> {
   return (await readAll())
-    .filter((p) => p.onSale && p.salePrice != null)
+    .filter((p) => p.status?.includes("On Sale") && p.salePrice != null)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function getNewArrivalProducts(): Promise<Product[]> {
   return (await readAll())
-    .filter((p) => p.newArrival)
+    .filter((p) => p.status?.includes("New Arrival"))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function getClearanceProducts(): Promise<Product[]> {
   return (await readAll())
-    .filter((p) => p.clearance)
+    .filter((p) => p.status?.includes("Clearance"))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function getLimitedEditionProducts(): Promise<Product[]> {
   return (await readAll())
-    .filter((p) => p.limitedEdition)
+    .filter((p) => p.status?.includes("Limited Edition"))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function getFeaturedProducts(): Promise<Product[]> {
   return (await readAll())
-    .filter((p) => p.featured)
+    .filter((p) => p.status?.includes("Featured"))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 

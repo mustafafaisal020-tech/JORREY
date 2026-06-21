@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import ImageUploadMultiple from "./ImageUploadMultiple";
-import { SIZES, SKINCARE_TYPES, PRODUCT_COLORS, categoryHasSizes, isSkincareCat, type Product } from "@/lib/product-types";
+import { SIZES, SKINCARE_TYPES, PRODUCT_COLORS, STATUS_OPTIONS, categoryHasSizes, isSkincareCat, type Product } from "@/lib/product-types";
 import type { Category } from "@/lib/category-types";
 
 const schema = z.object({
@@ -34,25 +34,21 @@ const schema = z.object({
   sku: z.string().min(1, "Required"),
   sizes: z.array(z.string()),
   images: z.array(z.string()),
-  featured: z.boolean(),
-  onSale: z.boolean(),
+  status: z.array(z.string()),
   salePrice: z.number().optional(),
   skincareType: z.string().optional(),
-  bottleSizeMl: z.number().optional(),
+  ml: z.number().optional(),
   pattern: z.string().optional(),
   productType: z.string().optional(),
-  newArrival: z.boolean(),
-  clearance: z.boolean(),
-  limitedEdition: z.boolean(),
-}).refine((d) => !d.onSale || (d.salePrice != null && d.salePrice > 0 && d.salePrice < d.price), {
+}).refine((d) => !d.status.includes("On Sale") || (d.salePrice != null && d.salePrice > 0 && d.salePrice < d.price), {
   message: "Sale price must be set and less than the original price",
   path: ["salePrice"],
 }).superRefine((d, ctx) => {
   if (isSkincareCat(d.category) && !d.skincareType) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required for SkinCare products", path: ["skincareType"] });
   }
-  if (isSkincareCat(d.category) && (!d.bottleSizeMl || d.bottleSizeMl <= 0)) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required for SkinCare products", path: ["bottleSizeMl"] });
+  if (isSkincareCat(d.category) && (!d.ml || d.ml <= 0)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Missing required field: Bottle Size (ML)", path: ["ml"] });
   }
 });
 
@@ -94,16 +90,12 @@ export default function ProductForm({ product, categories = [] }: ProductFormPro
           sku: product.sku,
           sizes: product.sizes,
           images: product.images?.length ? product.images : product.image ? [product.image] : [],
-          featured: product.featured ?? false,
-          onSale: product.onSale ?? false,
+          status: product.status ?? [],
           salePrice: product.salePrice,
           skincareType: product.skincareType ?? "",
-          bottleSizeMl: product.bottleSizeMl,
+          ml: product.ml,
           pattern: product.pattern ?? "",
           productType: product.productType ?? "",
-          newArrival: product.newArrival ?? false,
-          clearance: product.clearance ?? false,
-          limitedEdition: product.limitedEdition ?? false,
         }
       : {
           name: "",
@@ -118,30 +110,31 @@ export default function ProductForm({ product, categories = [] }: ProductFormPro
           sku: "",
           sizes: [],
           images: [],
-          featured: false,
-          onSale: false,
+          status: [],
           salePrice: undefined,
           skincareType: "",
-          bottleSizeMl: undefined,
+          ml: undefined,
           pattern: "",
           productType: "",
-          newArrival: false,
-          clearance: false,
-          limitedEdition: false,
         },
   });
 
   const selectedSizes = watch("sizes");
   const imagesValue = watch("images");
   const categoryValue = watch("category");
-  const featuredValue = watch("featured");
-  const onSaleValue = watch("onSale");
-  const newArrivalValue = watch("newArrival");
-  const clearanceValue = watch("clearance");
-  const limitedEditionValue = watch("limitedEdition");
+  const statusValue = watch("status") ?? [];
+  const isOnSale = statusValue.includes("On Sale");
   const showSizes = categoryValue ? categoryHasSizes(categoryValue) : true;
   const showSkincareType = categoryValue ? isSkincareCat(categoryValue) : false;
   const showFashionExtra = categoryValue ? (!isSkincareCat(categoryValue) && categoryHasSizes(categoryValue)) : false;
+
+  function toggleStatus(item: string, checked: boolean) {
+    setValue(
+      "status",
+      checked ? [...statusValue, item] : statusValue.filter((s) => s !== item),
+      { shouldValidate: true }
+    );
+  }
 
   async function onSubmit(data: FormData) {
     setServerError("");
@@ -155,16 +148,12 @@ export default function ProductForm({ product, categories = [] }: ProductFormPro
       nameAr: data.nameAr || undefined,
       summaryAr: data.summaryAr || undefined,
       descriptionAr: data.descriptionAr || undefined,
-      featured: data.featured,
-      onSale: data.onSale,
-      salePrice: data.onSale ? data.salePrice : undefined,
+      status: data.status,
+      salePrice: data.status.includes("On Sale") ? data.salePrice : undefined,
       skincareType: showSkincareType ? data.skincareType || undefined : undefined,
-      bottleSizeMl: showSkincareType ? data.bottleSizeMl || undefined : undefined,
+      ml: showSkincareType ? data.ml || undefined : undefined,
       pattern: showFashionExtra ? data.pattern || undefined : undefined,
       productType: showFashionExtra ? data.productType || undefined : undefined,
-      newArrival: data.newArrival || undefined,
-      clearance: data.clearance || undefined,
-      limitedEdition: data.limitedEdition || undefined,
     };
     const res = await fetch(url, {
       method,
@@ -402,14 +391,14 @@ export default function ProductForm({ product, categories = [] }: ProductFormPro
             </Label>
             <p className="text-xs text-gray-400">Volume displayed on the product card (e.g. 50).</p>
             <Input
-              {...register("bottleSizeMl", { valueAsNumber: true })}
+              {...register("ml", { valueAsNumber: true })}
               type="number"
               step="1"
               min="1"
               placeholder="e.g. 50"
               className="max-w-xs rounded-none"
             />
-            {errors.bottleSizeMl && <p className="text-xs text-red-500">{errors.bottleSizeMl.message as string}</p>}
+            {errors.ml && <p className="text-xs text-red-500">{errors.ml.message as string}</p>}
           </div>
         </div>
       )}
@@ -432,85 +421,91 @@ export default function ProductForm({ product, categories = [] }: ProductFormPro
         </div>
       )}
 
-      {/* ── Featured ── */}
-      <div className="border border-jorrey-gold/30 bg-jorrey-beige/20 px-4 py-3 flex items-start gap-3">
-        <Checkbox
-          checked={featuredValue}
-          onCheckedChange={(v) => setValue("featured", !!v, { shouldValidate: true })}
-          className="mt-0.5"
-        />
-        <div>
-          <p className="text-sm font-medium text-jorrey-black">Featured Product</p>
-          <p className="text-xs text-gray-400 mt-0.5">Shows a FEATURED badge on the card and lists the product on <span className="font-mono">/featured</span>. Also appears in the Featured Pieces section on the homepage.</p>
-        </div>
-      </div>
+      {/* ── Special Status ── */}
+      <div className="space-y-2">
+        <Label className="text-xs tracking-widest uppercase text-gray-500">Special Status</Label>
+        <p className="text-[11px] text-gray-400">A product can have multiple statuses. Each status adds a badge and lists the product on its collection page.</p>
 
-      {/* ── Sale ── */}
-      <div className="border border-red-200 bg-red-50/40 px-4 py-3 space-y-3">
-        <div className="flex items-start gap-3">
+        {/* Featured */}
+        <div className="border border-jorrey-gold/30 bg-jorrey-beige/20 px-4 py-3 flex items-start gap-3">
           <Checkbox
-            checked={onSaleValue}
-            onCheckedChange={(v) => setValue("onSale", !!v, { shouldValidate: true })}
+            checked={statusValue.includes("Featured")}
+            onCheckedChange={(v) => toggleStatus("Featured", !!v)}
             className="mt-0.5"
           />
           <div>
-            <p className="text-sm font-medium text-jorrey-black">On Sale</p>
-            <p className="text-xs text-gray-400 mt-0.5">Shows a SALE badge and a discounted price. Product listed on <span className="font-mono">/sale</span>.</p>
+            <p className="text-sm font-medium text-jorrey-black">Featured Product</p>
+            <p className="text-xs text-gray-400 mt-0.5">Shows a FEATURED badge. Listed on <span className="font-mono">/featured</span> and the homepage Featured Pieces section.</p>
           </div>
         </div>
-        {onSaleValue && (
-          <div className="space-y-1.5 ms-7">
-            <Label className="text-xs tracking-widests uppercase text-gray-500">Sale Price *</Label>
-            <Input
-              {...register("salePrice", { valueAsNumber: true })}
-              type="number"
-              step="0.01"
-              placeholder="e.g. 990"
-              className="max-w-xs rounded-none"
+
+        {/* On Sale */}
+        <div className="border border-red-200 bg-red-50/40 px-4 py-3 space-y-3">
+          <div className="flex items-start gap-3">
+            <Checkbox
+              checked={statusValue.includes("On Sale")}
+              onCheckedChange={(v) => toggleStatus("On Sale", !!v)}
+              className="mt-0.5"
             />
-            {errors.salePrice && (
-              <p className="text-xs text-red-500">{errors.salePrice.message as string}</p>
-            )}
+            <div>
+              <p className="text-sm font-medium text-jorrey-black">On Sale</p>
+              <p className="text-xs text-gray-400 mt-0.5">Shows a SALE badge and discounted price. Listed on <span className="font-mono">/sale</span>.</p>
+            </div>
           </div>
-        )}
-      </div>
-
-      {/* ── New Arrival ── */}
-      <div className="border border-teal-200 bg-teal-50/40 px-4 py-3 flex items-start gap-3">
-        <Checkbox
-          checked={newArrivalValue}
-          onCheckedChange={(v) => setValue("newArrival", !!v, { shouldValidate: true })}
-          className="mt-0.5"
-        />
-        <div>
-          <p className="text-sm font-medium text-jorrey-black">New Arrival</p>
-          <p className="text-xs text-gray-400 mt-0.5">Shows a NEW ARRIVAL badge on the card. Product listed on <span className="font-mono">/new-arrival</span>.</p>
+          {isOnSale && (
+            <div className="space-y-1.5 ms-7">
+              <Label className="text-xs tracking-widest uppercase text-gray-500">Sale Price *</Label>
+              <Input
+                {...register("salePrice", { valueAsNumber: true })}
+                type="number"
+                step="0.01"
+                placeholder="e.g. 990"
+                className="max-w-xs rounded-none"
+              />
+              {errors.salePrice && (
+                <p className="text-xs text-red-500">{errors.salePrice.message as string}</p>
+              )}
+            </div>
+          )}
         </div>
-      </div>
 
-      {/* ── Clearance ── */}
-      <div className="border border-orange-200 bg-orange-50/40 px-4 py-3 flex items-start gap-3">
-        <Checkbox
-          checked={clearanceValue}
-          onCheckedChange={(v) => setValue("clearance", !!v, { shouldValidate: true })}
-          className="mt-0.5"
-        />
-        <div>
-          <p className="text-sm font-medium text-jorrey-black">Clearance</p>
-          <p className="text-xs text-gray-400 mt-0.5">Shows a CLEARANCE badge on the card. Product listed on <span className="font-mono">/clearance</span>.</p>
+        {/* New Arrival */}
+        <div className="border border-teal-200 bg-teal-50/40 px-4 py-3 flex items-start gap-3">
+          <Checkbox
+            checked={statusValue.includes("New Arrival")}
+            onCheckedChange={(v) => toggleStatus("New Arrival", !!v)}
+            className="mt-0.5"
+          />
+          <div>
+            <p className="text-sm font-medium text-jorrey-black">New Arrival</p>
+            <p className="text-xs text-gray-400 mt-0.5">Shows a NEW ARRIVAL badge. Listed on <span className="font-mono">/new-arrival</span>.</p>
+          </div>
         </div>
-      </div>
 
-      {/* ── Limited Edition ── */}
-      <div className="border border-jorrey-gold/40 bg-jorrey-beige/30 px-4 py-3 flex items-start gap-3">
-        <Checkbox
-          checked={limitedEditionValue}
-          onCheckedChange={(v) => setValue("limitedEdition", !!v, { shouldValidate: true })}
-          className="mt-0.5"
-        />
-        <div>
-          <p className="text-sm font-medium text-jorrey-black">Limited Edition</p>
-          <p className="text-xs text-gray-400 mt-0.5">Shows a LIMITED EDITION gold badge on the card. Product listed on <span className="font-mono">/limited-edition</span>.</p>
+        {/* Clearance */}
+        <div className="border border-orange-200 bg-orange-50/40 px-4 py-3 flex items-start gap-3">
+          <Checkbox
+            checked={statusValue.includes("Clearance")}
+            onCheckedChange={(v) => toggleStatus("Clearance", !!v)}
+            className="mt-0.5"
+          />
+          <div>
+            <p className="text-sm font-medium text-jorrey-black">Clearance</p>
+            <p className="text-xs text-gray-400 mt-0.5">Shows a CLEARANCE badge. Listed on <span className="font-mono">/clearance</span>.</p>
+          </div>
+        </div>
+
+        {/* Limited Edition */}
+        <div className="border border-jorrey-gold/40 bg-jorrey-beige/30 px-4 py-3 flex items-start gap-3">
+          <Checkbox
+            checked={statusValue.includes("Limited Edition")}
+            onCheckedChange={(v) => toggleStatus("Limited Edition", !!v)}
+            className="mt-0.5"
+          />
+          <div>
+            <p className="text-sm font-medium text-jorrey-black">Limited Edition</p>
+            <p className="text-xs text-gray-400 mt-0.5">Shows a LIMITED EDITION gold badge. Listed on <span className="font-mono">/limited-edition</span>.</p>
+          </div>
         </div>
       </div>
 

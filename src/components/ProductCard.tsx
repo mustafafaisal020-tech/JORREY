@@ -41,6 +41,9 @@ export default function ProductCard({
 
   const hasSizes = categoryHasSizes(product.category) && product.sizes.length > 0;
 
+  const statusArr = product.status ?? [];
+  const hasOnSale = statusArr.includes("On Sale");
+
   function quickAddToCart(e: React.MouseEvent) {
     e.stopPropagation();
     if (hasSizes) {
@@ -51,7 +54,7 @@ export default function ProductCard({
       productId: product.id,
       name: product.name,
       nameAr: product.nameAr,
-      price: product.onSale && product.salePrice ? product.salePrice : product.price,
+      price: hasOnSale && product.salePrice ? product.salePrice : product.price,
       sku: product.sku,
       color: product.color,
       size: tp("one_size"),
@@ -95,50 +98,30 @@ export default function ProductCard({
           )}
 
           {/* Badges — stacked column top-start, each routes to its collection page */}
-          {(product.onSale || product.featured || product.newArrival || product.clearance || product.limitedEdition) && (
+          {statusArr.length > 0 && (
             <div className="absolute top-2 start-2 z-10 flex flex-col gap-1">
-              {product.onSale && (
-                <Link
-                  href="/sale"
-                  onClick={(e) => e.stopPropagation()}
-                  className="bg-red-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-red-700 transition-colors"
-                >
+              {statusArr.includes("On Sale") && (
+                <Link href="/sale" onClick={(e) => e.stopPropagation()} className="bg-red-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-red-700 transition-colors">
                   SALE
                 </Link>
               )}
-              {product.featured && (
-                <Link
-                  href="/featured"
-                  onClick={(e) => e.stopPropagation()}
-                  className="bg-jorrey-black text-jorrey-gold text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-jorrey-gold hover:text-jorrey-black transition-colors"
-                >
+              {statusArr.includes("Featured") && (
+                <Link href="/featured" onClick={(e) => e.stopPropagation()} className="bg-jorrey-black text-jorrey-gold text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-jorrey-gold hover:text-jorrey-black transition-colors">
                   FEATURED
                 </Link>
               )}
-              {product.newArrival && (
-                <Link
-                  href="/new-arrival"
-                  onClick={(e) => e.stopPropagation()}
-                  className="bg-teal-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-teal-700 transition-colors"
-                >
+              {statusArr.includes("New Arrival") && (
+                <Link href="/new-arrival" onClick={(e) => e.stopPropagation()} className="bg-teal-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-teal-700 transition-colors">
                   NEW ARRIVAL
                 </Link>
               )}
-              {product.clearance && (
-                <Link
-                  href="/clearance"
-                  onClick={(e) => e.stopPropagation()}
-                  className="bg-orange-500 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-orange-600 transition-colors"
-                >
+              {statusArr.includes("Clearance") && (
+                <Link href="/clearance" onClick={(e) => e.stopPropagation()} className="bg-orange-500 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-orange-600 transition-colors">
                   CLEARANCE
                 </Link>
               )}
-              {product.limitedEdition && (
-                <Link
-                  href="/limited-edition"
-                  onClick={(e) => e.stopPropagation()}
-                  className="bg-jorrey-gold text-jorrey-black text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-jorrey-gold-dark transition-colors"
-                >
+              {statusArr.includes("Limited Edition") && (
+                <Link href="/limited-edition" onClick={(e) => e.stopPropagation()} className="bg-jorrey-gold text-jorrey-black text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-jorrey-gold-dark transition-colors">
                   LIMITED EDITION
                 </Link>
               )}
@@ -174,9 +157,9 @@ export default function ProductCard({
           <h3 className="font-serif text-lg text-jorrey-black group-hover:text-jorrey-gold-dark transition-colors duration-300">
             {isRTL && product.nameAr ? product.nameAr : product.name}
           </h3>
-          {isSkincareCat(product.category) && product.bottleSizeMl && (
+          {isSkincareCat(product.category) && product.ml && (
             <p className="text-jorrey-black/50 text-[11px] tracking-widest uppercase font-sans">
-              {product.bottleSizeMl} ML
+              {product.ml} ML
             </p>
           )}
           {(product.summary || product.summaryAr) && (
@@ -184,7 +167,7 @@ export default function ProductCard({
               {isRTL && product.summaryAr ? product.summaryAr : product.summary}
             </p>
           )}
-          {product.onSale && product.salePrice ? (
+          {hasOnSale && product.salePrice ? (
             <div className="flex items-center gap-2">
               <p className="text-red-600 text-sm font-sans tracking-wide font-medium">
                 {currencySymbol}{product.salePrice.toLocaleString()}

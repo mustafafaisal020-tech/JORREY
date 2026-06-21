@@ -1,3 +1,13 @@
+export const STATUS_OPTIONS = [
+  "Featured",
+  "On Sale",
+  "New Arrival",
+  "Clearance",
+  "Limited Edition",
+] as const;
+
+export type ProductStatus = (typeof STATUS_OPTIONS)[number];
+
 export interface Product {
   id: string;
   name: string;
@@ -13,22 +23,19 @@ export interface Product {
   sku: string;
   image: string;
   images: string[];
-  featured: boolean;
-  onSale: boolean;
+  status: ProductStatus[];
   salePrice?: number;
   skincareType?: string;
-  bottleSizeMl?: number;
+  ml?: number;
   pattern?: string;
   productType?: string;
-  newArrival?: boolean;
-  clearance?: boolean;
-  limitedEdition?: boolean;
   inStock?: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export type ProductInput = Omit<Product, "id" | "createdAt" | "updatedAt">;
+
 
 export const CATEGORIES = [
   "Outerwear",

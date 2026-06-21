@@ -144,7 +144,7 @@ export default function CategoryClient({ category, products, whatsappNumber, cur
       if (maxPrice && !isNaN(Number(maxPrice)) && Number(maxPrice) > 0) {
         const max = Number(maxPrice);
         result = result.filter((p) => {
-          const effective = p.onSale && p.salePrice ? p.salePrice : p.price;
+          const effective = p.status?.includes("On Sale") && p.salePrice ? p.salePrice : p.price;
           return effective <= max;
         });
       }

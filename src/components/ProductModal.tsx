@@ -61,6 +61,9 @@ export default function ProductModal({
   const displaySummary = isRTL && product.summaryAr     ? product.summaryAr     : product.summary;
   const displayDesc    = isRTL && product.descriptionAr ? product.descriptionAr : product.description;
 
+  const hasOnSale = product.status?.includes("On Sale") ?? false;
+  const effectivePrice = hasOnSale && product.salePrice ? product.salePrice : product.price;
+
   function handleAddToCart() {
     if (hasSizes && !selectedSize) { setSizeError(true); return; }
     setSizeError(false);
@@ -68,7 +71,7 @@ export default function ProductModal({
       productId: product.id,
       name: product.name,
       nameAr: product.nameAr,
-      price: product.onSale && product.salePrice ? product.salePrice : product.price,
+      price: effectivePrice,
       sku: product.sku,
       color: product.color,
       size: hasSizes ? selectedSize : tp("one_size"),
@@ -90,7 +93,7 @@ export default function ProductModal({
     productId: product.id,
     name: product.name,
     nameAr: product.nameAr,
-    price: product.onSale && product.salePrice ? product.salePrice : product.price,
+    price: effectivePrice,
     sku: product.sku,
     color: product.color,
     size: hasSizes ? selectedSize : tp("one_size"),
@@ -181,13 +184,13 @@ export default function ProductModal({
                       <h2 className="font-serif text-2xl lg:text-[1.75rem] text-[#0C0C0C] leading-snug flex-1">
                         {displayName}
                       </h2>
-                      {product.onSale && (
+                      {hasOnSale && (
                         <span className="flex-shrink-0 bg-red-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 mt-1">
                           SALE
                         </span>
                       )}
                     </div>
-                    {product.onSale && product.salePrice ? (
+                    {hasOnSale && product.salePrice ? (
                       <div className="flex items-center gap-3">
                         <p className="text-[1.15rem] text-red-600 font-medium tracking-wide">
                           {currencySymbol}{product.salePrice.toLocaleString()}

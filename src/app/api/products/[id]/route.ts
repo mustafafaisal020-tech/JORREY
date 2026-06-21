@@ -28,8 +28,9 @@ export async function PUT(
     const product = await updateProduct(id, body);
     if (!product) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json(product);
-  } catch {
-    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to update product";
+    return NextResponse.json({ error: msg }, { status: 400 });
   }
 }
 
