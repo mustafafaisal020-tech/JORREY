@@ -30,11 +30,11 @@ export default async function ClearancePage() {
       />
       <main className="min-h-screen bg-jorrey-white pt-28 pb-24" dir={isRTL ? "rtl" : "ltr"}>
         <div className="max-w-7xl mx-auto px-6 lg:px-10">
-          <div className="mb-16">
+          <div className="mb-8 md:mb-16">
             <p className="text-orange-500 text-xs tracking-[0.35em] uppercase mb-4">
               {t("eyebrow")}
             </p>
-            <h1 className="font-serif text-5xl md:text-6xl text-jorrey-black leading-tight">
+            <h1 className="font-serif text-3xl md:text-5xl lg:text-6xl text-jorrey-black leading-tight">
               {t("title")}
             </h1>
             <div className="w-12 h-px bg-orange-500 mt-6" />

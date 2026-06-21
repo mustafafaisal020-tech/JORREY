@@ -17,7 +17,7 @@ export default function EmailSignup() {
   };
 
   return (
-    <section id="signup" className="bg-jorrey-black py-28 px-6 lg:px-10">
+    <section id="signup" className="bg-jorrey-black py-16 md:py-28 px-6 lg:px-10">
       <div className="max-w-2xl mx-auto text-center">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -25,14 +25,14 @@ export default function EmailSignup() {
           viewport={{ once: true }}
           transition={{ duration: 0.7 }}
         >
-          <p className="text-jorrey-gold text-xs tracking-[0.35em] uppercase mb-6">
+          <p className="text-jorrey-gold text-xs tracking-[0.35em] uppercase mb-4 md:mb-6">
             {t("eyebrow")}
           </p>
-          <h2 className="font-serif text-5xl md:text-6xl text-jorrey-white leading-tight mb-6">
+          <h2 className="font-serif text-3xl md:text-5xl lg:text-6xl text-jorrey-white leading-tight mb-4 md:mb-6">
             {t("title")}{" "}
             <span className="italic text-jorrey-gold">{t("accent")}</span>
           </h2>
-          <p className="text-jorrey-white/40 text-base font-sans leading-relaxed mb-12">
+          <p className="text-jorrey-white/40 text-base font-sans leading-relaxed mb-8 md:mb-12">
             {t("desc")}
           </p>
 
@@ -58,7 +58,7 @@ export default function EmailSignup() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t("placeholder")}
                 required
-                className="flex-1 bg-transparent border border-jorrey-white/20 border-e-0 px-6 py-4 text-jorrey-white text-sm placeholder:text-jorrey-white/30 focus:outline-none focus:border-jorrey-gold/50 transition-colors"
+                className="flex-1 bg-transparent border border-jorrey-white/20 border-b-0 sm:border-b sm:border-e-0 px-6 py-4 text-jorrey-white text-sm placeholder:text-jorrey-white/30 focus:outline-none focus:border-jorrey-gold/50 transition-colors"
               />
               <button
                 type="submit"

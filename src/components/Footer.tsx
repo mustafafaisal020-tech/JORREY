@@ -32,8 +32,8 @@ export default async function Footer() {
 
   return (
     <footer id="contact" className={`${rootBg} ${brandText}`}>
-      <div className="max-w-7xl mx-auto px-6 lg:px-10 pt-20 pb-10">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+      <div className="max-w-7xl mx-auto px-6 lg:px-10 pt-12 md:pt-20 pb-8 md:pb-10">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-12 mb-10 md:mb-16">
           {/* Brand */}
           <div className="md:col-span-1">
             <Link href="/" className={`font-serif text-2xl tracking-[0.15em] ${brandText} mb-6 block`}>

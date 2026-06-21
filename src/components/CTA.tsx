@@ -7,7 +7,7 @@ export default function CTA() {
   const t = useTranslations("cta");
 
   return (
-    <section className="bg-jorrey-beige py-32 px-6 lg:px-10 overflow-hidden relative">
+    <section className="bg-jorrey-beige py-16 md:py-32 px-6 lg:px-10 overflow-hidden relative">
       <div className="absolute end-0 top-1/2 -translate-y-1/2 w-72 h-72 rounded-full bg-jorrey-gold/10 blur-3xl pointer-events-none" />
       <div className="absolute start-0 top-1/2 -translate-y-1/2 w-48 h-48 rounded-full bg-jorrey-gold/10 blur-3xl pointer-events-none" />
 
@@ -21,12 +21,12 @@ export default function CTA() {
           <p className="text-jorrey-gold text-xs tracking-[0.35em] uppercase mb-6">
             {t("eyebrow")}
           </p>
-          <h2 className="font-serif text-5xl md:text-7xl text-jorrey-black leading-tight mb-8">
+          <h2 className="font-serif text-3xl md:text-5xl lg:text-7xl text-jorrey-black leading-tight mb-6 md:mb-8">
             {t("line1")}
             <br />
             <span className="italic text-jorrey-gold-dark">{t("line2")}</span>
           </h2>
-          <p className="text-jorrey-black/50 text-base md:text-lg font-sans leading-relaxed mb-12 max-w-lg mx-auto">
+          <p className="text-jorrey-black/50 text-base md:text-lg font-sans leading-relaxed mb-8 md:mb-12 max-w-lg mx-auto">
             {t("desc")}
           </p>
 
@@ -34,7 +34,7 @@ export default function CTA() {
             href="#collections"
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
-            className="inline-block bg-jorrey-black text-jorrey-white text-xs tracking-[0.25em] uppercase font-semibold px-14 py-5 hover:bg-jorrey-gold hover:text-jorrey-black transition-colors duration-300"
+            className="inline-block bg-jorrey-black text-jorrey-white text-xs tracking-[0.25em] uppercase font-semibold px-8 md:px-14 py-4 md:py-5 hover:bg-jorrey-gold hover:text-jorrey-black transition-colors duration-300"
           >
             {t("button")}
           </motion.a>

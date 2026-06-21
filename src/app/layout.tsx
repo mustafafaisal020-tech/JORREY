@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Playfair_Display, Cairo } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { NextIntlClientProvider } from "next-intl";
@@ -31,6 +31,11 @@ const cairo = Cairo({
 export const metadata: Metadata = {
   title: "Jorrey — Elegance Designed for You",
   description: "Curated luxury fashion pieces crafted for the discerning few.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default async function RootLayout({

@@ -48,7 +48,7 @@ export default function Hero({ section }: HeroProps) {
                 initial={{ y: "100%" }}
                 animate={{ y: 0 }}
                 transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-                className="font-serif text-6xl md:text-8xl lg:text-9xl text-jorrey-white leading-[0.9] tracking-tight"
+                className="font-serif text-4xl sm:text-6xl md:text-8xl lg:text-9xl text-jorrey-white leading-[0.9] tracking-tight"
               >
                 {heading}
               </motion.h1>

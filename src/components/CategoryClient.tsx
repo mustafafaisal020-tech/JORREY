@@ -334,7 +334,7 @@ export default function CategoryClient({ category, products, whatsappNumber, cur
           <p className="text-jorrey-gold text-xs tracking-[0.35em] uppercase mb-4">
             {t("collection")}
           </p>
-          <h1 className="font-serif text-5xl md:text-6xl text-jorrey-black leading-tight">
+          <h1 className="font-serif text-3xl md:text-5xl lg:text-6xl text-jorrey-black leading-tight">
             {displayName}
           </h1>
           <div className="w-12 h-px bg-jorrey-gold mt-6" />

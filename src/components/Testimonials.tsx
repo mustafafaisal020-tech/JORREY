@@ -13,24 +13,24 @@ export default function Testimonials() {
   ];
 
   return (
-    <section className="bg-jorrey-beige py-28 px-6 lg:px-10">
+    <section className="bg-jorrey-beige py-16 md:py-28 px-6 lg:px-10">
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7 }}
-          className="text-center mb-20"
+          className="text-center mb-10 md:mb-20"
         >
           <p className="text-jorrey-gold text-xs tracking-[0.35em] uppercase mb-4">
             {t("eyebrow")}
           </p>
-          <h2 className="font-serif text-5xl md:text-6xl text-jorrey-black leading-tight">
+          <h2 className="font-serif text-3xl md:text-5xl lg:text-6xl text-jorrey-black leading-tight">
             {t("title")}
           </h2>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10">
           {testimonials.map((item, i) => (
             <motion.div
               key={i}
@@ -38,7 +38,7 @@ export default function Testimonials() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.7, delay: i * 0.12 }}
-              className="bg-jorrey-white p-10 relative"
+              className="bg-jorrey-white p-6 md:p-10 relative"
             >
               <span className="font-serif text-7xl text-jorrey-gold/20 leading-none absolute top-6 start-8 select-none">
                 "

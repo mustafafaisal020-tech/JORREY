@@ -58,14 +58,14 @@ export default function FeaturedCollections({
   }
 
   return (
-    <section id="collections" className="bg-jorrey-white py-24 px-6 lg:px-10">
+    <section id="collections" className="bg-jorrey-white py-16 md:py-24 px-6 lg:px-10">
       <div className="max-w-7xl mx-auto">
 
         {/* ── Two-column: left label + right horizontal slides ── */}
-        <div className={`flex items-start gap-12 lg:gap-20 ${isRTL ? "flex-row-reverse" : ""}`}>
+        <div className={`flex flex-col md:flex-row items-start gap-8 md:gap-12 lg:gap-20 ${isRTL ? "md:flex-row-reverse" : ""}`}>
 
-          {/* Left column — sticky label */}
-          <div className="flex-shrink-0 w-56 lg:w-64 pt-2">
+          {/* Left column — full width on mobile, fixed on desktop */}
+          <div className="flex-shrink-0 w-full md:w-56 lg:w-64 md:pt-2">
             <motion.div
               initial={{ opacity: 0, x: isRTL ? 30 : -30 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -75,7 +75,7 @@ export default function FeaturedCollections({
               <p className="text-jorrey-gold text-xs tracking-[0.35em] uppercase mb-4">
                 {t("eyebrow")}
               </p>
-              <h2 className="font-serif text-4xl lg:text-5xl text-jorrey-black leading-tight mb-6">
+              <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl text-jorrey-black leading-tight mb-6">
                 {title}
               </h2>
               {description && (
@@ -95,9 +95,9 @@ export default function FeaturedCollections({
           {/* Right column — horizontal scroll */}
           <div className="flex-1 min-w-0">
             <div className="relative">
-              {/* Scroll arrows */}
+              {/* Scroll arrows — desktop only; mobile uses touch scroll */}
               {categories.length > 2 && (
-                <div className={`absolute -top-10 flex gap-2 ${isRTL ? "left-0" : "right-0"}`}>
+                <div className={`absolute -top-10 hidden md:flex gap-2 ${isRTL ? "left-0" : "right-0"}`}>
                   <button
                     type="button"
                     onClick={() => scroll("left")}
@@ -176,17 +176,17 @@ export default function FeaturedCollections({
 
         {/* ── Featured products ── */}
         {products.length > 0 && (
-          <div className="mt-28">
+          <div className="mt-16 md:mt-28">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-center mb-12"
+              className="text-center mb-8 md:mb-12"
             >
               <p className="text-jorrey-gold text-xs tracking-[0.35em] uppercase mb-4">
                 {t("products_eyebrow")}
               </p>
-              <h2 className="font-serif text-4xl md:text-5xl text-jorrey-black">
+              <h2 className="font-serif text-2xl md:text-4xl lg:text-5xl text-jorrey-black">
                 {t("products_title")}
               </h2>
             </motion.div>
