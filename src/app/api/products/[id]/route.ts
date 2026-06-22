@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
-import { getProduct, updateProduct, deleteProduct } from "@/lib/products";
+import { getProduct, updateProduct, archiveProduct } from "@/lib/products";
 import { getWatchersForProduct, addNotification } from "@/lib/customers";
 import {
   sendEmail,
@@ -37,7 +37,7 @@ export async function PUT(
     const body = await req.json();
 
     const oldProduct = await getProduct(id);
-    const product = await updateProduct(id, body);
+    const product = await updateProduct(id, body, userId);
     if (!product) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     if (oldProduct) {
@@ -51,6 +51,7 @@ export async function PUT(
   }
 }
 
+// Soft-deletes (archives) the product — recoverable from admin archive page
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -59,9 +60,9 @@ export async function DELETE(
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const ok = await deleteProduct(id);
+  const ok = await archiveProduct(id, userId);
   if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, archived: true });
 }
 
 async function triggerWatchlistNotifications(
@@ -81,7 +82,6 @@ async function triggerWatchlistNotifications(
     (newProduct.salePrice != null &&
       (oldProduct.salePrice == null || newProduct.salePrice < oldProduct.salePrice));
 
-  // Restocked: was out of stock, now in stock (inStock: false → true/undefined)
   const restocked = oldProduct.inStock === false && newProduct.inStock !== false;
 
   for (const watcher of watchers) {

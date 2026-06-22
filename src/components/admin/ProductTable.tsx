@@ -104,6 +104,9 @@ export default function ProductTable({ products: initial }: ProductTableProps) {
             </SelectContent>
           </Select>
         </div>
+        <Link href="/admin/products/archive" className="text-xs text-gray-400 hover:text-jorrey-black transition-colors underline underline-offset-2">
+          View Archive
+        </Link>
         <Link href="/admin/products/new">
           <Button className="rounded-none bg-jorrey-black text-white hover:bg-jorrey-gold hover:text-jorrey-black text-xs tracking-widest uppercase">
             + Add Product
@@ -263,16 +266,17 @@ export default function ProductTable({ products: initial }: ProductTableProps) {
         {filtered.length} product{filtered.length !== 1 ? "s" : ""}
       </p>
 
-      {/* Delete confirmation */}
+      {/* Archive confirmation */}
       <Dialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <DialogContent className="rounded-none">
           <DialogHeader>
             <DialogTitle className="font-serif text-lg">
-              Delete Product
+              Remove Product
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-500">
-              Are you sure you want to delete{" "}
-              <strong>{toDelete?.name}</strong>? This cannot be undone.
+              <strong>{toDelete?.name}</strong> will be removed from the store and
+              moved to the archive. You can restore it at any time from{" "}
+              <strong>Products → View Archive</strong>.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -288,7 +292,7 @@ export default function ProductTable({ products: initial }: ProductTableProps) {
               disabled={deleting}
               className="rounded-none bg-red-600 text-white hover:bg-red-700 text-xs tracking-widest uppercase"
             >
-              {deleting ? "Deleting…" : "Delete"}
+              {deleting ? "Archiving…" : "Remove from Store"}
             </Button>
           </DialogFooter>
         </DialogContent>

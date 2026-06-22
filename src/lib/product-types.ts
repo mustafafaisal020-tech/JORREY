@@ -30,8 +30,21 @@ export interface Product {
   pattern?: string;
   productType?: string;
   inStock?: boolean;
+  archived?: boolean;
+  archivedAt?: string;
+  archivedBy?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ProductChangeEvent {
+  id: string;
+  productId: string;
+  productName: string;
+  action: "created" | "updated" | "archived" | "restored";
+  adminId: string;
+  timestamp: string;
+  changes?: Record<string, { before: unknown; after: unknown }>;
 }
 
 export type ProductInput = Omit<Product, "id" | "createdAt" | "updatedAt">;

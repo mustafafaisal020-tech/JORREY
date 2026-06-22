@@ -3,6 +3,10 @@
  *   - Development (no VERCEL env var): reads/writes local data/*.json files
  *   - Production (Vercel): reads/writes Vercel Blob; falls back to committed
  *     data files on first read before any blob exists
+ *
+ * CDN cache-busting: Vercel Blob serves public files via CDN. After a put(),
+ * a subsequent fetch of the same URL can return a stale cached response.
+ * We append ?t=<epoch-ms> to every read URL so each request hits origin.
  */
 import { put, list } from "@vercel/blob";
 import fs from "fs";
@@ -36,7 +40,11 @@ export async function readStore<T>(key: string, fallback: T): Promise<T> {
   try {
     const { blobs } = await list({ prefix: `${BLOB_PREFIX}${key}.json` });
     if (blobs.length > 0) {
-      const res = await fetch(blobs[0].url, { cache: "no-store" });
+      // Append timestamp to bypass CDN cache — ensures we always get the
+      // version just written, not a stale edge-cached copy.
+      const blobUrl = new URL(blobs[0].url);
+      blobUrl.searchParams.set("t", Date.now().toString());
+      const res = await fetch(blobUrl.toString(), { cache: "no-store" });
       if (res.ok) return (await res.json()) as T;
     }
   } catch {
