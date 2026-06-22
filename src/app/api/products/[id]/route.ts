@@ -2,7 +2,14 @@ import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { getProduct, updateProduct, deleteProduct } from "@/lib/products";
 import { getWatchersForProduct, addNotification } from "@/lib/customers";
-import { sendEmail, priceDrophHtml, restockHtml } from "@/lib/email";
+import {
+  sendEmail,
+  sendWhatsApp,
+  priceDrophHtml,
+  restockHtml,
+  priceDropWhatsApp,
+  restockWhatsApp,
+} from "@/lib/email";
 import { getSettings } from "@/lib/settings";
 
 export async function GET(
@@ -33,7 +40,6 @@ export async function PUT(
     const product = await updateProduct(id, body);
     if (!product) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    // Trigger watchlist notifications asynchronously
     if (oldProduct) {
       triggerWatchlistNotifications(oldProduct, product).catch(() => {});
     }
@@ -75,11 +81,17 @@ async function triggerWatchlistNotifications(
     (newProduct.salePrice != null &&
       (oldProduct.salePrice == null || newProduct.salePrice < oldProduct.salePrice));
 
-  const restocked = !oldProduct.inStock && newProduct.inStock !== false;
+  // Restocked: was out of stock, now in stock (inStock: false → true/undefined)
+  const restocked = oldProduct.inStock === false && newProduct.inStock !== false;
 
   for (const watcher of watchers) {
     const item = watcher.watchlist.find((w) => w.productId === newProduct.id);
     if (!item) continue;
+
+    const channel = item.notificationChannel ?? "email";
+    const wantsEmail = channel === "email" || channel === "both";
+    const wantsWhatsApp = channel === "whatsapp" || channel === "both";
+    const whatsappTo = watcher.whatsappNumber ?? watcher.phone ?? "";
 
     if (priceDrop && item.notifyPriceDrop) {
       const effectiveOld = oldProduct.salePrice ?? oldProduct.price;
@@ -92,16 +104,16 @@ async function triggerWatchlistNotifications(
         read: false,
         createdAt: new Date().toISOString(),
       });
-      await sendEmail({
-        to: watcher.email,
-        subject: `Price Drop: ${newProduct.name}`,
-        html: priceDrophHtml(
-          newProduct.name,
-          effectiveOld,
-          effectiveNew,
-          currency
-        ),
-      });
+      if (wantsEmail) {
+        await sendEmail({
+          to: watcher.email,
+          subject: `Price Drop: ${newProduct.name}`,
+          html: priceDrophHtml(newProduct.name, effectiveOld, effectiveNew, currency),
+        });
+      }
+      if (wantsWhatsApp) {
+        await sendWhatsApp(whatsappTo, priceDropWhatsApp(newProduct.name, effectiveOld, effectiveNew, currency));
+      }
     }
 
     if (restocked && item.notifyRestock) {
@@ -113,11 +125,16 @@ async function triggerWatchlistNotifications(
         read: false,
         createdAt: new Date().toISOString(),
       });
-      await sendEmail({
-        to: watcher.email,
-        subject: `Back in Stock: ${newProduct.name}`,
-        html: restockHtml(newProduct.name),
-      });
+      if (wantsEmail) {
+        await sendEmail({
+          to: watcher.email,
+          subject: `Back in Stock: ${newProduct.name}`,
+          html: restockHtml(newProduct.name),
+        });
+      }
+      if (wantsWhatsApp) {
+        await sendWhatsApp(whatsappTo, restockWhatsApp(newProduct.name));
+      }
     }
   }
 }

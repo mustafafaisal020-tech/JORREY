@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
-import type { WatchlistItem, FavoriteItem, InAppNotification } from "@/lib/customer-types";
+import type { WatchlistItem, FavoriteItem, InAppNotification, NotificationChannel } from "@/lib/customer-types";
 
 interface UserListsContextValue {
   favorites: FavoriteItem[];
@@ -12,10 +12,15 @@ interface UserListsContextValue {
   isFavorite: (productId: string) => boolean;
   isWatched: (productId: string) => boolean;
   toggleFavorite: (productId: string, productName: string) => Promise<void>;
-  toggleWatchlist: (productId: string, productName: string, price: number) => Promise<void>;
+  toggleWatchlist: (
+    productId: string,
+    productName: string,
+    price: number,
+    channel?: NotificationChannel
+  ) => Promise<void>;
   updateWatchlistPrefs: (
     productId: string,
-    prefs: { notifyPriceDrop: boolean; notifyRestock: boolean }
+    prefs: { notifyPriceDrop: boolean; notifyRestock: boolean; notificationChannel: NotificationChannel }
   ) => Promise<void>;
   markAllRead: () => Promise<void>;
   refreshLists: () => void;
@@ -61,7 +66,11 @@ export default function UserListsProvider({ children }: { children: React.ReactN
         fetch("/api/customers/me/notifications"),
       ]);
       if (favRes.ok) setFavorites(await favRes.json());
-      if (watchRes.ok) setWatchlist(await watchRes.json());
+      if (watchRes.ok) {
+        const wl: WatchlistItem[] = await watchRes.json();
+        // Normalise legacy items without notificationChannel
+        setWatchlist(wl.map((w) => ({ ...w, notificationChannel: w.notificationChannel ?? ("email" as NotificationChannel) })));
+      }
       if (notifRes.ok) {
         const data = await notifRes.json();
         setNotifications(data.notifications ?? []);
@@ -95,7 +104,12 @@ export default function UserListsProvider({ children }: { children: React.ReactN
     }
   };
 
-  const toggleWatchlist = async (productId: string, productName: string, price: number) => {
+  const toggleWatchlist = async (
+    productId: string,
+    productName: string,
+    price: number,
+    channel: NotificationChannel = "email"
+  ) => {
     if (!user) return;
     if (isWatched(productId)) {
       setWatchlist((prev) => prev.filter((w) => w.productId !== productId));
@@ -108,19 +122,27 @@ export default function UserListsProvider({ children }: { children: React.ReactN
         priceAtAdd: price,
         notifyPriceDrop: true,
         notifyRestock: true,
+        notificationChannel: channel,
       };
       setWatchlist((prev) => [...prev, item]);
       await fetch("/api/customers/me/watchlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId, productName, priceAtAdd: price, notifyPriceDrop: true, notifyRestock: true }),
+        body: JSON.stringify({
+          productId,
+          productName,
+          priceAtAdd: price,
+          notifyPriceDrop: true,
+          notifyRestock: true,
+          notificationChannel: channel,
+        }),
       });
     }
   };
 
   const updateWatchlistPrefs = async (
     productId: string,
-    prefs: { notifyPriceDrop: boolean; notifyRestock: boolean }
+    prefs: { notifyPriceDrop: boolean; notifyRestock: boolean; notificationChannel: NotificationChannel }
   ) => {
     setWatchlist((prev) =>
       prev.map((w) => (w.productId === productId ? { ...w, ...prefs } : w))
@@ -135,7 +157,11 @@ export default function UserListsProvider({ children }: { children: React.ReactN
   const markAllRead = async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     setUnreadNotifications(0);
-    await fetch("/api/customers/me/notifications", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+    await fetch("/api/customers/me/notifications", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
   };
 
   return (

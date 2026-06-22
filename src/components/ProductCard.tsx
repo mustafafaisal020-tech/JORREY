@@ -47,9 +47,11 @@ export default function ProductCard({
   const statusArr = product.status ?? [];
   const hasOnSale = statusArr.includes("On Sale");
   const effectivePrice = hasOnSale && product.salePrice ? product.salePrice : product.price;
+  const isOutOfStock = product.inStock === false;
 
   function quickAddToCart(e: React.MouseEvent) {
     e.stopPropagation();
+    if (isOutOfStock) return;
     if (hasSizes) {
       setModalOpen(true);
       return;
@@ -69,6 +71,7 @@ export default function ProductCard({
 
   function quickBuyNow(e: React.MouseEvent) {
     e.stopPropagation();
+    if (isOutOfStock) return;
     setModalOpen(true);
   }
 
@@ -105,66 +108,77 @@ export default function ProductCard({
               alt={product.name}
               fill
               sizes="(max-width: 768px) 50vw, 25vw"
-              className="object-cover transition-all duration-500 group-hover:scale-105"
+              className={`object-cover transition-all duration-500 group-hover:scale-105 ${isOutOfStock ? "grayscale-[30%]" : ""}`}
             />
           ) : (
             <div className="w-full h-full transition-transform duration-700 group-hover:scale-105 bg-jorrey-beige" />
           )}
 
-          {/* Status badges — top-start */}
-          {statusArr.length > 0 && (
-            <div className="absolute top-2 start-2 z-10 flex flex-col gap-1">
-              {statusArr.includes("On Sale") && (
-                <Link
-                  href="/sale"
-                  onClick={(e) => e.stopPropagation()}
-                  className="bg-red-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-red-700 transition-colors"
-                >
-                  SALE
-                </Link>
-              )}
-              {statusArr.includes("Featured") && (
-                <Link
-                  href="/featured"
-                  onClick={(e) => e.stopPropagation()}
-                  className="bg-jorrey-black text-jorrey-gold text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-jorrey-gold hover:text-jorrey-black transition-colors"
-                >
-                  FEATURED
-                </Link>
-              )}
-              {statusArr.includes("New Arrival") && (
-                <Link
-                  href="/new-arrival"
-                  onClick={(e) => e.stopPropagation()}
-                  className="bg-teal-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-teal-700 transition-colors"
-                >
-                  NEW ARRIVAL
-                </Link>
-              )}
-              {statusArr.includes("Clearance") && (
-                <Link
-                  href="/clearance"
-                  onClick={(e) => e.stopPropagation()}
-                  className="bg-orange-500 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-orange-600 transition-colors"
-                >
-                  CLEARANCE
-                </Link>
-              )}
-              {statusArr.includes("Limited Edition") && (
-                <Link
-                  href="/limited-edition"
-                  onClick={(e) => e.stopPropagation()}
-                  className="bg-jorrey-gold text-jorrey-black text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-jorrey-gold-dark transition-colors"
-                >
-                  LIMITED EDITION
-                </Link>
-              )}
-            </div>
+          {/* OOS dimming overlay */}
+          {isOutOfStock && (
+            <div className="absolute inset-0 z-10 bg-white/30 pointer-events-none" />
           )}
 
-          {/* Favorites + Watchlist — top-end, always visible when signed in */}
+          {/* Status badges — top-start */}
+          <div className="absolute top-2 start-2 z-20 flex flex-col gap-1">
+            {isOutOfStock ? (
+              <span className="bg-red-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1">
+                OUT OF STOCK
+              </span>
+            ) : (
+              <>
+                {statusArr.includes("On Sale") && (
+                  <Link
+                    href="/sale"
+                    onClick={(e) => e.stopPropagation()}
+                    className="bg-red-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-red-700 transition-colors"
+                  >
+                    SALE
+                  </Link>
+                )}
+                {statusArr.includes("Featured") && (
+                  <Link
+                    href="/featured"
+                    onClick={(e) => e.stopPropagation()}
+                    className="bg-jorrey-black text-jorrey-gold text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-jorrey-gold hover:text-jorrey-black transition-colors"
+                  >
+                    FEATURED
+                  </Link>
+                )}
+                {statusArr.includes("New Arrival") && (
+                  <Link
+                    href="/new-arrival"
+                    onClick={(e) => e.stopPropagation()}
+                    className="bg-teal-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-teal-700 transition-colors"
+                  >
+                    NEW ARRIVAL
+                  </Link>
+                )}
+                {statusArr.includes("Clearance") && (
+                  <Link
+                    href="/clearance"
+                    onClick={(e) => e.stopPropagation()}
+                    className="bg-orange-500 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-orange-600 transition-colors"
+                  >
+                    CLEARANCE
+                  </Link>
+                )}
+                {statusArr.includes("Limited Edition") && (
+                  <Link
+                    href="/limited-edition"
+                    onClick={(e) => e.stopPropagation()}
+                    className="bg-jorrey-gold text-jorrey-black text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-jorrey-gold-dark transition-colors"
+                  >
+                    LIMITED EDITION
+                  </Link>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Favorites + Watchlist — top-end */}
           {user && (
-            <div className="absolute top-2 end-2 z-10 flex flex-col gap-1.5">
+            <div className="absolute top-2 end-2 z-20 flex flex-col gap-1.5">
               <button
                 onClick={handleToggleFavorite}
                 aria-label={isFavorite(product.id) ? "Remove from favorites" : "Add to favorites"}
@@ -178,15 +192,16 @@ export default function ProductCard({
                   strokeWidth={isFavorite(product.id) ? 0 : 2}
                 />
               </button>
+              {/* Bell is more prominent when OOS */}
               <button
                 onClick={handleToggleWatchlist}
                 aria-label={isWatched(product.id) ? "Remove from watchlist" : "Add to watchlist"}
-                className={`w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors ${
-                  isWatched(product.id) ? "text-jorrey-gold" : "text-gray-400 hover:text-jorrey-gold"
-                }`}
+                className={`rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors ${
+                  isOutOfStock ? "w-8 h-8 ring-2 ring-jorrey-gold/40" : "w-7 h-7"
+                } ${isWatched(product.id) ? "text-jorrey-gold" : "text-gray-400 hover:text-jorrey-gold"}`}
               >
                 <Bell
-                  size={13}
+                  size={isOutOfStock ? 15 : 13}
                   fill={isWatched(product.id) ? "currentColor" : "none"}
                   strokeWidth={isWatched(product.id) ? 0 : 2}
                 />
@@ -194,25 +209,34 @@ export default function ProductCard({
             </div>
           )}
 
-          {/* Hover overlay — buy/add buttons */}
-          <div className="absolute inset-0 bg-jorrey-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-end justify-end gap-2 p-3">
-            {whatsappNumber && (
+          {/* OOS watchlist hint (non-signed-in) */}
+          {isOutOfStock && !user && (
+            <div className="absolute bottom-0 start-0 end-0 z-20 bg-jorrey-black/80 text-white text-[9px] tracking-wide text-center py-2 px-3">
+              Sign in to get notified when back in stock
+            </div>
+          )}
+
+          {/* Hover overlay — buy/add buttons (hidden when OOS) */}
+          {!isOutOfStock && (
+            <div className="absolute inset-0 bg-jorrey-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-end justify-end gap-2 p-3">
+              {whatsappNumber && (
+                <button
+                  onClick={quickBuyNow}
+                  className="flex items-center gap-1.5 bg-jorrey-gold text-jorrey-black text-[10px] tracking-widest uppercase px-4 py-2 font-semibold hover:bg-jorrey-gold-light transition-colors w-full justify-center"
+                >
+                  <Zap size={11} />
+                  {t("buy_now")}
+                </button>
+              )}
               <button
-                onClick={quickBuyNow}
-                className="flex items-center gap-1.5 bg-jorrey-gold text-jorrey-black text-[10px] tracking-widest uppercase px-4 py-2 font-semibold hover:bg-jorrey-gold-light transition-colors w-full justify-center"
+                onClick={quickAddToCart}
+                className="flex items-center gap-1.5 bg-jorrey-white text-jorrey-black text-[10px] tracking-widest uppercase px-4 py-2 font-semibold hover:bg-jorrey-beige transition-colors w-full justify-center"
               >
-                <Zap size={11} />
-                {t("buy_now")}
+                <ShoppingBag size={11} />
+                {t("add_to_bag")}
               </button>
-            )}
-            <button
-              onClick={quickAddToCart}
-              className="flex items-center gap-1.5 bg-jorrey-white text-jorrey-black text-[10px] tracking-widest uppercase px-4 py-2 font-semibold hover:bg-jorrey-beige transition-colors w-full justify-center"
-            >
-              <ShoppingBag size={11} />
-              {t("add_to_bag")}
-            </button>
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Info */}
@@ -245,7 +269,7 @@ export default function ProductCard({
               </p>
             </div>
           ) : (
-            <p className="text-jorrey-black/70 text-sm font-sans tracking-wide">
+            <p className={`text-sm font-sans tracking-wide ${isOutOfStock ? "text-jorrey-black/30" : "text-jorrey-black/70"}`}>
               {currencySymbol}
               {product.price.toLocaleString()}
             </p>
@@ -257,7 +281,7 @@ export default function ProductCard({
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         product={product}
-        whatsappNumber={whatsappNumber}
+        whatsappNumber={isOutOfStock ? "" : whatsappNumber}
         currencySymbol={currencySymbol}
       />
     </>

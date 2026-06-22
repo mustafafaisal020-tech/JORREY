@@ -6,6 +6,8 @@ export interface CustomerAddress {
   zipCode?: string;
 }
 
+export type NotificationChannel = "email" | "whatsapp" | "both";
+
 export interface WatchlistItem {
   productId: string;
   productName: string;
@@ -13,6 +15,7 @@ export interface WatchlistItem {
   priceAtAdd: number;
   notifyPriceDrop: boolean;
   notifyRestock: boolean;
+  notificationChannel: NotificationChannel;
 }
 
 export interface FavoriteItem {
@@ -37,6 +40,7 @@ export interface CustomerProfile {
   firstName: string;
   lastName?: string;
   phone?: string;
+  whatsappNumber?: string;
   address?: CustomerAddress;
   watchlist: WatchlistItem[];
   favorites: FavoriteItem[];

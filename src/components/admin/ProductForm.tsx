@@ -50,6 +50,7 @@ const schema = z
     ml: z.number().optional(),
     pattern: z.string().optional(),
     productType: z.string().optional(),
+    inStock: z.boolean(),
   })
   .refine(
     (d) =>
@@ -144,6 +145,7 @@ export default function ProductForm({ product, categories = [] }: ProductFormPro
           ml: product.ml,
           pattern: product.pattern ?? "",
           productType: product.productType ?? "",
+          inStock: product.inStock !== false,
         }
       : {
           name: "",
@@ -164,6 +166,7 @@ export default function ProductForm({ product, categories = [] }: ProductFormPro
           ml: undefined,
           pattern: "",
           productType: "",
+          inStock: true,
         },
   });
 
@@ -172,6 +175,7 @@ export default function ProductForm({ product, categories = [] }: ProductFormPro
   const categoryValue = watch("category");
   const statusValue = watch("status") ?? [];
   const isOnSale = statusValue.includes("On Sale");
+  const inStockValue = watch("inStock");
   const showSizes = categoryValue ? categoryHasSizes(categoryValue) : true;
   const showLiquidMl = categoryValue ? isLiquidCat(categoryValue) : false;
   const showSkincareType = categoryValue ? isSkincareCat(categoryValue) : false;
@@ -205,6 +209,7 @@ export default function ProductForm({ product, categories = [] }: ProductFormPro
       ml: showLiquidMl ? data.ml || undefined : undefined,
       pattern: showFashionExtra ? data.pattern || undefined : undefined,
       productType: showFashionExtra ? data.productType || undefined : undefined,
+      inStock: data.inStock,
     };
     const res = await fetch(url, {
       method,
@@ -546,6 +551,32 @@ export default function ProductForm({ product, categories = [] }: ProductFormPro
           </div>
         </div>
       )}
+
+      {/* ── Stock Status ── */}
+      <div className="space-y-2">
+        <Label className="text-xs tracking-widest uppercase text-gray-500">Stock Status</Label>
+        <div className={`border px-4 py-3 flex items-start gap-3 transition-colors ${!inStockValue ? "border-red-300 bg-red-50/50" : "border-gray-200"}`}>
+          <Checkbox
+            checked={!inStockValue}
+            onCheckedChange={(v) => setValue("inStock", !v, { shouldValidate: true })}
+            className="mt-0.5"
+          />
+          <div>
+            <p className="text-sm font-medium text-jorrey-black">Mark as Out of Stock</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Shows a red <span className="font-semibold text-red-600">OUT OF STOCK</span> badge on the product card and disables add-to-bag.
+            </p>
+          </div>
+        </div>
+        {!inStockValue && (
+          <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800">
+            <span className="text-base leading-none mt-0.5">💡</span>
+            <span>
+              Customers can add this product to their <strong>Watchlist</strong> and will be notified automatically when it&apos;s back in stock.
+            </span>
+          </div>
+        )}
+      </div>
 
       {/* ── Special Status ── */}
       <div className="space-y-2">

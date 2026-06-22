@@ -1,6 +1,7 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { getCustomer, addToWatchlist, ensureCustomer } from "@/lib/customers";
+import type { NotificationChannel } from "@/lib/customer-types";
 
 export async function GET() {
   const { userId } = await auth();
@@ -15,7 +16,14 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { productId, productName, priceAtAdd, notifyPriceDrop = true, notifyRestock = true } = body;
+    const {
+      productId,
+      productName,
+      priceAtAdd,
+      notifyPriceDrop = true,
+      notifyRestock = true,
+      notificationChannel = "email" as NotificationChannel,
+    } = body;
     if (!productId || !productName) {
       return NextResponse.json({ error: "productId and productName required" }, { status: 400 });
     }
@@ -35,6 +43,7 @@ export async function POST(req: NextRequest) {
       priceAtAdd: priceAtAdd ?? 0,
       notifyPriceDrop,
       notifyRestock,
+      notificationChannel,
     });
     return NextResponse.json(updated?.watchlist ?? []);
   } catch {

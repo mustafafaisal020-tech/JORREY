@@ -18,6 +18,41 @@ export async function sendEmail({ to, subject, html }: EmailPayload): Promise<vo
   }
 }
 
+// WhatsApp via Meta Cloud API. Requires env vars:
+//   WHATSAPP_API_TOKEN       — permanent token from Meta Business
+//   WHATSAPP_PHONE_NUMBER_ID — sender phone number ID
+// If not configured, silently skips (no error thrown).
+export async function sendWhatsApp(to: string, text: string): Promise<void> {
+  const token = process.env.WHATSAPP_API_TOKEN;
+  const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (!token || !phoneId || !to) return;
+
+  // Normalise: strip non-digits and ensure leading +
+  const normalised = to.replace(/\D/g, "");
+  if (!normalised) return;
+
+  try {
+    await fetch(
+      `https://graph.facebook.com/v19.0/${phoneId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: normalised,
+          type: "text",
+          text: { body: text },
+        }),
+      }
+    );
+  } catch {
+    // fail silently
+  }
+}
+
 export function priceDrophHtml(productName: string, oldPrice: number, newPrice: number, currency: string): string {
   return `
     <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;padding:40px 20px;color:#1a1a1a;">
@@ -51,4 +86,12 @@ export function restockHtml(productName: string): string {
       <p style="font-size:12px;color:#aaa;">You are receiving this because you added this item to your Watchlist on jorrey.com.</p>
     </div>
   `;
+}
+
+export function priceDropWhatsApp(productName: string, oldPrice: number, newPrice: number, currency: string): string {
+  return `🏷️ *Price Drop Alert — JORREY*\n\n*${productName}* is now on sale!\n\n${currency}${oldPrice.toLocaleString()} → *${currency}${newPrice.toLocaleString()}*\n\nShop now at jorrey.com`;
+}
+
+export function restockWhatsApp(productName: string): string {
+  return `📦 *Back in Stock — JORREY*\n\n*${productName}* is back in stock and ready to order.\n\nShop now at jorrey.com`;
 }

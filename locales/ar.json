@@ -168,7 +168,12 @@
         "added": "تمت الإضافة!",
         "price_at_add": "السعر عند الإضافة",
         "notify_price_drop": "انخفاض السعر",
-        "notify_restock": "عودة للمخزون"
+        "notify_restock": "عودة للمخزون",
+        "whatsapp_number": "رقم واتساب",
+        "whatsapp_hint": "يُستخدم لتلقي إشعارات واتساب للمنتجات في قائمة المتابعة.",
+        "channel_email": "إيميل",
+        "channel_whatsapp": "واتساب",
+        "channel_both": "كلاهما"
     },
     "footer": {
         "collections": "المجموعات",

@@ -34,11 +34,11 @@ import {
 import { CATEGORIES, type Product } from "@/lib/product-types";
 
 const STATUS_FLAGS = [
-  { key: "New Arrival",     label: "New",      color: "text-teal-600",  bg: "bg-teal-50"   },
+  { key: "New Arrival",     label: "New",      color: "text-teal-600",   bg: "bg-teal-50"   },
   { key: "Featured",        label: "Featured", color: "text-yellow-600", bg: "bg-yellow-50" },
-  { key: "On Sale",         label: "Sale",     color: "text-red-600",   bg: "bg-red-50"    },
-  { key: "Limited Edition", label: "Limited",  color: "text-amber-600", bg: "bg-amber-50"  },
-  { key: "Clearance",       label: "Clear",    color: "text-orange-600",bg: "bg-orange-50" },
+  { key: "On Sale",         label: "Sale",     color: "text-red-600",    bg: "bg-red-50"    },
+  { key: "Limited Edition", label: "Limited",  color: "text-amber-600",  bg: "bg-amber-50"  },
+  { key: "Clearance",       label: "Clear",    color: "text-orange-600", bg: "bg-orange-50" },
 ] as const;
 
 interface ProductTableProps {
@@ -195,6 +195,11 @@ export default function ProductTable({ products: initial }: ProductTableProps) {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
+                      {product.inStock === false && (
+                        <span className="inline-flex items-center gap-0.5 text-[9px] tracking-widest uppercase font-semibold px-1.5 py-0.5 text-red-700 bg-red-100">
+                          OOS
+                        </span>
+                      )}
                       {STATUS_FLAGS.map(({ key, label, color, bg }) =>
                         product.status?.includes(key) ? (
                           <span

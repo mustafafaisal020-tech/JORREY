@@ -168,7 +168,12 @@
         "added": "Added!",
         "price_at_add": "Price when added",
         "notify_price_drop": "Price drop",
-        "notify_restock": "Back in stock"
+        "notify_restock": "Back in stock",
+        "whatsapp_number": "WhatsApp Number",
+        "whatsapp_hint": "Used to receive WhatsApp notifications for items on your watchlist.",
+        "channel_email": "Email",
+        "channel_whatsapp": "WhatsApp",
+        "channel_both": "Both"
     },
     "footer": {
         "collections": "Collections",
