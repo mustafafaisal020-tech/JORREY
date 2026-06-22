@@ -4,7 +4,7 @@ import { CartProvider } from "@/components/CartProvider";
 import CartDrawer from "@/components/CartDrawer";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import CategoryOrbit3D from "@/components/CategoryOrbit3D";
+import CategorySwipeViewer from "@/components/CategorySwipeViewer";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,7 @@ export default async function Home() {
         categories={categories}
       />
       <main>
-        <CategoryOrbit3D categories={categories} />
+        <CategorySwipeViewer categories={categories} />
       </main>
       <Footer />
       <CartDrawer
