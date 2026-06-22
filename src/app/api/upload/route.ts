@@ -1,29 +1,46 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
-import { put } from "@vercel/blob";
+import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
 import path from "path";
 import sharp from "sharp";
 
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
 const MAX_DIMENSION = 1200;
-const JPEG_QUALITY = 82;
 
-async function compressImage(buffer: Buffer, mimeType: string): Promise<Buffer> {
-  const img = sharp(buffer).rotate(); // auto-orient from EXIF
-  const meta = await img.metadata();
+async function uploadToCloudinary(buffer: Buffer, mimeType: string): Promise<string> {
+  const base64 = `data:${mimeType};base64,${buffer.toString("base64")}`;
+  const result = await cloudinary.uploader.upload(base64, {
+    folder: "jorrey-products",
+    transformation: [
+      { width: MAX_DIMENSION, height: MAX_DIMENSION, crop: "limit" },
+      { quality: "auto:good", fetch_format: "auto" },
+    ],
+  });
+  return result.secure_url;
+}
 
-  const needsResize =
-    (meta.width && meta.width > MAX_DIMENSION) ||
-    (meta.height && meta.height > MAX_DIMENSION);
+async function saveLocally(buffer: Buffer, mimeType: string, originalName: string): Promise<string> {
+  const ext = mimeType === "image/gif" ? "gif" : "jpg";
+  const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const uploadDir = path.join(process.cwd(), "public", "products");
+  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-  if (needsResize) {
-    img.resize(MAX_DIMENSION, MAX_DIMENSION, { fit: "inside", withoutEnlargement: true });
+  let out = buffer;
+  if (mimeType !== "image/gif") {
+    out = await sharp(buffer)
+      .rotate()
+      .resize(MAX_DIMENSION, MAX_DIMENSION, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 82, mozjpeg: true })
+      .toBuffer();
   }
-
-  // GIFs stay as-is (sharp can't re-encode animated GIFs well)
-  if (mimeType === "image/gif") return img.toBuffer();
-
-  return img.jpeg({ quality: JPEG_QUALITY, mozjpeg: true }).toBuffer();
+  fs.writeFileSync(path.join(uploadDir, filename), out);
+  return `/products/${filename}`;
 }
 
 export async function POST(req: NextRequest) {
@@ -43,23 +60,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "File too large (max 10MB)" }, { status: 400 });
     }
 
-    const rawBuffer = Buffer.from(await file.arrayBuffer());
-    const isGif = file.type === "image/gif";
-    const compressed = await compressImage(rawBuffer, file.type);
-    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${isGif ? "gif" : "jpg"}`;
+    const buffer = Buffer.from(await file.arrayBuffer());
 
-    if (process.env.VERCEL) {
-      const blob = await put(`jorrey-products/${filename}`, compressed, {
-        access: "public",
-        contentType: isGif ? "image/gif" : "image/jpeg",
-      });
-      return NextResponse.json({ url: blob.url });
-    }
+    const url = process.env.VERCEL
+      ? await uploadToCloudinary(buffer, file.type)
+      : await saveLocally(buffer, file.type, file.name);
 
-    const uploadDir = path.join(process.cwd(), "public", "products");
-    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-    fs.writeFileSync(path.join(uploadDir, filename), compressed);
-    return NextResponse.json({ url: `/products/${filename}` });
+    return NextResponse.json({ url });
   } catch {
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
