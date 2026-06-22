@@ -1,19 +1,19 @@
-import { put } from "@vercel/blob";
+import { Redis } from "@upstash/redis";
 import fs from "fs";
 import path from "path";
 
 const IS_VERCEL = !!process.env.VERCEL;
 const DATA_DIR = path.join(process.cwd(), "data");
-const BLOB_PREFIX = "jorrey-data/";
 
-// Derive the public base URL from the token — avoids calling list() on every
-// read, which burned through Advanced Operations (2k/month free limit).
-// Token format: vercel_blob_rw_<STORE_ID>_<SECRET>
-function getBlobBaseUrl(): string {
-  const token = process.env.BLOB_READ_WRITE_TOKEN ?? "";
-  const match = token.match(/vercel_blob_rw_([^_]+)_/i);
-  if (!match) throw new Error("BLOB_READ_WRITE_TOKEN is missing or malformed");
-  return `https://${match[1].toLowerCase()}.public.blob.vercel-storage.com`;
+let _redis: Redis | null = null;
+function getRedis(): Redis {
+  if (!_redis) {
+    _redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL!,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    });
+  }
+  return _redis;
 }
 
 function readFromFile<T>(key: string, fallback: T): T {
@@ -28,27 +28,17 @@ function readFromFile<T>(key: string, fallback: T): T {
 
 function writeToFile<T>(key: string, data: T): void {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(
-    path.join(DATA_DIR, `${key}.json`),
-    JSON.stringify(data, null, 2)
-  );
+  fs.writeFileSync(path.join(DATA_DIR, `${key}.json`), JSON.stringify(data, null, 2));
 }
 
 export async function readStore<T>(key: string, fallback: T): Promise<T> {
   if (!IS_VERCEL) return readFromFile(key, fallback);
-
   try {
-    // Construct URL directly — no list() call needed since we use addRandomSuffix: false.
-    // Append ?t= to bypass CDN cache so we always see the latest write.
-    const url = `${getBlobBaseUrl()}/${BLOB_PREFIX}${key}.json?t=${Date.now()}`;
-    const res = await fetch(url, { cache: "no-store" });
-    if (res.ok) return (await res.json()) as T;
-    // 404 means blob not yet created — fall through to seed file
+    const data = await getRedis().get<T>(key);
+    return data ?? fallback;
   } catch {
-    // fall through
+    return fallback;
   }
-
-  return readFromFile(key, fallback);
 }
 
 export async function writeStore<T>(key: string, data: T): Promise<void> {
@@ -56,10 +46,5 @@ export async function writeStore<T>(key: string, data: T): Promise<void> {
     writeToFile(key, data);
     return;
   }
-  await put(`${BLOB_PREFIX}${key}.json`, JSON.stringify(data, null, 2), {
-    access: "public",
-    contentType: "application/json",
-    addRandomSuffix: false,
-    allowOverwrite: true,
-  });
+  await getRedis().set(key, data);
 }
