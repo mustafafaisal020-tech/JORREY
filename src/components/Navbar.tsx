@@ -8,6 +8,7 @@ import { ShoppingBag, User } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useCart } from "./CartProvider";
+import { useUserLists } from "./UserListsProvider";
 import CustomerAccountModal from "./CustomerAccountModal";
 import type { Category } from "@/lib/category-types";
 
@@ -22,6 +23,7 @@ export default function Navbar({ categories = [] }: NavbarProps) {
   const isRTL = locale === "ar";
   const { count, setOpen } = useCart();
   const { user } = useUser();
+  const { unreadNotifications } = useUserLists();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -88,10 +90,13 @@ export default function Navbar({ categories = [] }: NavbarProps) {
             </button>
             <button
               onClick={() => setAccountOpen(true)}
-              className={`transition-colors ${user ? "text-jorrey-gold" : "text-jorrey-white/70 hover:text-jorrey-gold"}`}
+              className={`relative transition-colors ${user ? "text-jorrey-gold" : "text-jorrey-white/70 hover:text-jorrey-gold"}`}
               aria-label="Account"
             >
               <User size={18} />
+              {user && unreadNotifications > 0 && (
+                <span className="absolute -top-1 -end-1 w-2 h-2 rounded-full bg-red-500" />
+              )}
             </button>
           </div>
 

@@ -4,12 +4,14 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { ShoppingBag, Zap } from "lucide-react";
+import { ShoppingBag, Zap, Heart, Bell } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
+import { useUser } from "@clerk/nextjs";
 import ProductModal from "./ProductModal";
 import type { Product } from "@/lib/product-types";
-import { categoryHasSizes, isSkincareCat } from "@/lib/product-types";
+import { categoryHasSizes, isLiquidCat } from "@/lib/product-types";
 import { useCart } from "./CartProvider";
+import { useUserLists } from "./UserListsProvider";
 
 export type { Product };
 
@@ -29,6 +31,8 @@ export default function ProductCard({
   const locale = useLocale();
   const isRTL = locale === "ar";
   const { addItem } = useCart();
+  const { user } = useUser();
+  const { isFavorite, isWatched, toggleFavorite, toggleWatchlist } = useUserLists();
   const [modalOpen, setModalOpen] = useState(false);
   const [hoverImg, setHoverImg] = useState<string | null>(null);
 
@@ -40,9 +44,9 @@ export default function ProductCard({
       : [];
 
   const hasSizes = categoryHasSizes(product.category) && product.sizes.length > 0;
-
   const statusArr = product.status ?? [];
   const hasOnSale = statusArr.includes("On Sale");
+  const effectivePrice = hasOnSale && product.salePrice ? product.salePrice : product.price;
 
   function quickAddToCart(e: React.MouseEvent) {
     e.stopPropagation();
@@ -54,7 +58,7 @@ export default function ProductCard({
       productId: product.id,
       name: product.name,
       nameAr: product.nameAr,
-      price: hasOnSale && product.salePrice ? product.salePrice : product.price,
+      price: effectivePrice,
       sku: product.sku,
       color: product.color,
       size: tp("one_size"),
@@ -68,6 +72,16 @@ export default function ProductCard({
     setModalOpen(true);
   }
 
+  function handleToggleFavorite(e: React.MouseEvent) {
+    e.stopPropagation();
+    toggleFavorite(product.id, product.name);
+  }
+
+  function handleToggleWatchlist(e: React.MouseEvent) {
+    e.stopPropagation();
+    toggleWatchlist(product.id, product.name, effectivePrice);
+  }
+
   return (
     <>
       <motion.div
@@ -78,10 +92,10 @@ export default function ProductCard({
         className="group cursor-pointer"
         onClick={() => setModalOpen(true)}
       >
-        {/* Image — aspectRatio in inline style ensures it's always applied */}
+        {/* Image */}
         <div
           className="relative overflow-hidden mb-4"
-          style={{ aspectRatio: '3/4' }}
+          style={{ aspectRatio: "3/4" }}
           onMouseEnter={() => images[1] && setHoverImg(images[1])}
           onMouseLeave={() => setHoverImg(null)}
         >
@@ -97,43 +111,95 @@ export default function ProductCard({
             <div className="w-full h-full transition-transform duration-700 group-hover:scale-105 bg-jorrey-beige" />
           )}
 
-          {/* Badges — stacked column top-start, each routes to its collection page */}
+          {/* Status badges — top-start */}
           {statusArr.length > 0 && (
             <div className="absolute top-2 start-2 z-10 flex flex-col gap-1">
               {statusArr.includes("On Sale") && (
-                <Link href="/sale" onClick={(e) => e.stopPropagation()} className="bg-red-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-red-700 transition-colors">
+                <Link
+                  href="/sale"
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-red-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-red-700 transition-colors"
+                >
                   SALE
                 </Link>
               )}
               {statusArr.includes("Featured") && (
-                <Link href="/featured" onClick={(e) => e.stopPropagation()} className="bg-jorrey-black text-jorrey-gold text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-jorrey-gold hover:text-jorrey-black transition-colors">
+                <Link
+                  href="/featured"
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-jorrey-black text-jorrey-gold text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-jorrey-gold hover:text-jorrey-black transition-colors"
+                >
                   FEATURED
                 </Link>
               )}
               {statusArr.includes("New Arrival") && (
-                <Link href="/new-arrival" onClick={(e) => e.stopPropagation()} className="bg-teal-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-teal-700 transition-colors">
+                <Link
+                  href="/new-arrival"
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-teal-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-teal-700 transition-colors"
+                >
                   NEW ARRIVAL
                 </Link>
               )}
               {statusArr.includes("Clearance") && (
-                <Link href="/clearance" onClick={(e) => e.stopPropagation()} className="bg-orange-500 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-orange-600 transition-colors">
+                <Link
+                  href="/clearance"
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-orange-500 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-orange-600 transition-colors"
+                >
                   CLEARANCE
                 </Link>
               )}
               {statusArr.includes("Limited Edition") && (
-                <Link href="/limited-edition" onClick={(e) => e.stopPropagation()} className="bg-jorrey-gold text-jorrey-black text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-jorrey-gold-dark transition-colors">
+                <Link
+                  href="/limited-edition"
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-jorrey-gold text-jorrey-black text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-jorrey-gold-dark transition-colors"
+                >
                   LIMITED EDITION
                 </Link>
               )}
             </div>
           )}
 
-          {/* Hover overlay */}
+          {/* Favorites + Watchlist — top-end, always visible when signed in */}
+          {user && (
+            <div className="absolute top-2 end-2 z-10 flex flex-col gap-1.5">
+              <button
+                onClick={handleToggleFavorite}
+                aria-label={isFavorite(product.id) ? "Remove from favorites" : "Add to favorites"}
+                className={`w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors ${
+                  isFavorite(product.id) ? "text-red-500" : "text-gray-400 hover:text-red-400"
+                }`}
+              >
+                <Heart
+                  size={13}
+                  fill={isFavorite(product.id) ? "currentColor" : "none"}
+                  strokeWidth={isFavorite(product.id) ? 0 : 2}
+                />
+              </button>
+              <button
+                onClick={handleToggleWatchlist}
+                aria-label={isWatched(product.id) ? "Remove from watchlist" : "Add to watchlist"}
+                className={`w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors ${
+                  isWatched(product.id) ? "text-jorrey-gold" : "text-gray-400 hover:text-jorrey-gold"
+                }`}
+              >
+                <Bell
+                  size={13}
+                  fill={isWatched(product.id) ? "currentColor" : "none"}
+                  strokeWidth={isWatched(product.id) ? 0 : 2}
+                />
+              </button>
+            </div>
+          )}
+
+          {/* Hover overlay — buy/add buttons */}
           <div className="absolute inset-0 bg-jorrey-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-end justify-end gap-2 p-3">
             {whatsappNumber && (
               <button
                 onClick={quickBuyNow}
-                className="flex items-center gap-1.5 bg-jorrey-gold text-jorrey-black text-[10px] tracking-widests uppercase px-4 py-2 font-semibold hover:bg-jorrey-gold-light transition-colors w-full justify-center"
+                className="flex items-center gap-1.5 bg-jorrey-gold text-jorrey-black text-[10px] tracking-widest uppercase px-4 py-2 font-semibold hover:bg-jorrey-gold-light transition-colors w-full justify-center"
               >
                 <Zap size={11} />
                 {t("buy_now")}
@@ -141,7 +207,7 @@ export default function ProductCard({
             )}
             <button
               onClick={quickAddToCart}
-              className="flex items-center gap-1.5 bg-jorrey-white text-jorrey-black text-[10px] tracking-widests uppercase px-4 py-2 font-semibold hover:bg-jorrey-beige transition-colors w-full justify-center"
+              className="flex items-center gap-1.5 bg-jorrey-white text-jorrey-black text-[10px] tracking-widest uppercase px-4 py-2 font-semibold hover:bg-jorrey-beige transition-colors w-full justify-center"
             >
               <ShoppingBag size={11} />
               {t("add_to_bag")}
@@ -151,13 +217,13 @@ export default function ProductCard({
 
         {/* Info */}
         <div className="space-y-1">
-          <p className="text-jorrey-black/40 text-[11px] tracking-widests uppercase font-sans">
+          <p className="text-jorrey-black/40 text-[11px] tracking-widest uppercase font-sans">
             {product.category}
           </p>
           <h3 className="font-serif text-lg text-jorrey-black group-hover:text-jorrey-gold-dark transition-colors duration-300">
             {isRTL && product.nameAr ? product.nameAr : product.name}
           </h3>
-          {isSkincareCat(product.category) && product.ml && (
+          {isLiquidCat(product.category) && product.ml && (
             <p className="text-jorrey-black/50 text-[11px] tracking-widest uppercase font-sans">
               {product.ml} ML
             </p>
@@ -170,15 +236,18 @@ export default function ProductCard({
           {hasOnSale && product.salePrice ? (
             <div className="flex items-center gap-2">
               <p className="text-red-600 text-sm font-sans tracking-wide font-medium">
-                {currencySymbol}{product.salePrice.toLocaleString()}
+                {currencySymbol}
+                {product.salePrice.toLocaleString()}
               </p>
               <p className="text-jorrey-black/40 text-xs font-sans line-through">
-                {currencySymbol}{product.price.toLocaleString()}
+                {currencySymbol}
+                {product.price.toLocaleString()}
               </p>
             </div>
           ) : (
             <p className="text-jorrey-black/70 text-sm font-sans tracking-wide">
-              {currencySymbol}{product.price.toLocaleString()}
+              {currencySymbol}
+              {product.price.toLocaleString()}
             </p>
           )}
         </div>

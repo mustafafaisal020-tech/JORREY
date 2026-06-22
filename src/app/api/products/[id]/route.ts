@@ -1,6 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { getProduct, updateProduct, deleteProduct } from "@/lib/products";
+import { getWatchersForProduct, addNotification } from "@/lib/customers";
+import { sendEmail, priceDrophHtml, restockHtml } from "@/lib/email";
+import { getSettings } from "@/lib/settings";
 
 export async function GET(
   _req: NextRequest,
@@ -25,8 +28,16 @@ export async function PUT(
   const { id } = await params;
   try {
     const body = await req.json();
+
+    const oldProduct = await getProduct(id);
     const product = await updateProduct(id, body);
     if (!product) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    // Trigger watchlist notifications asynchronously
+    if (oldProduct) {
+      triggerWatchlistNotifications(oldProduct, product).catch(() => {});
+    }
+
     return NextResponse.json(product);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update product";
@@ -45,4 +56,68 @@ export async function DELETE(
   const ok = await deleteProduct(id);
   if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ success: true });
+}
+
+async function triggerWatchlistNotifications(
+  oldProduct: Awaited<ReturnType<typeof getProduct>>,
+  newProduct: Awaited<ReturnType<typeof getProduct>>
+) {
+  if (!oldProduct || !newProduct) return;
+
+  const watchers = await getWatchersForProduct(newProduct.id);
+  if (watchers.length === 0) return;
+
+  const settings = await getSettings();
+  const currency = settings.currencySymbol ?? "$";
+
+  const priceDrop =
+    newProduct.price < oldProduct.price ||
+    (newProduct.salePrice != null &&
+      (oldProduct.salePrice == null || newProduct.salePrice < oldProduct.salePrice));
+
+  const restocked = !oldProduct.inStock && newProduct.inStock !== false;
+
+  for (const watcher of watchers) {
+    const item = watcher.watchlist.find((w) => w.productId === newProduct.id);
+    if (!item) continue;
+
+    if (priceDrop && item.notifyPriceDrop) {
+      const effectiveOld = oldProduct.salePrice ?? oldProduct.price;
+      const effectiveNew = newProduct.salePrice ?? newProduct.price;
+      await addNotification(watcher.id, {
+        type: "price_drop",
+        productId: newProduct.id,
+        productName: newProduct.name,
+        message: `Price dropped from ${currency}${effectiveOld.toLocaleString()} to ${currency}${effectiveNew.toLocaleString()}`,
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
+      await sendEmail({
+        to: watcher.email,
+        subject: `Price Drop: ${newProduct.name}`,
+        html: priceDrophHtml(
+          newProduct.name,
+          effectiveOld,
+          effectiveNew,
+          currency
+        ),
+      });
+    }
+
+    if (restocked && item.notifyRestock) {
+      await addNotification(watcher.id, {
+        type: "restock",
+        productId: newProduct.id,
+        productName: newProduct.name,
+        message: `${newProduct.name} is back in stock`,
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
+      await sendEmail({
+        to: watcher.email,
+        subject: `Back in Stock: ${newProduct.name}`,
+        html: restockHtml(newProduct.name),
+      });
+    }
+  }
 }

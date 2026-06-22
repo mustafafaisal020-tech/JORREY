@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Pencil, Trash2, Search, Filter } from "lucide-react";
+import { Pencil, Trash2, Search, Filter, Check } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -32,6 +32,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CATEGORIES, type Product } from "@/lib/product-types";
+
+const STATUS_FLAGS = [
+  { key: "New Arrival",     label: "New",      color: "text-teal-600",  bg: "bg-teal-50"   },
+  { key: "Featured",        label: "Featured", color: "text-yellow-600", bg: "bg-yellow-50" },
+  { key: "On Sale",         label: "Sale",     color: "text-red-600",   bg: "bg-red-50"    },
+  { key: "Limited Edition", label: "Limited",  color: "text-amber-600", bg: "bg-amber-50"  },
+  { key: "Clearance",       label: "Clear",    color: "text-orange-600",bg: "bg-orange-50" },
+] as const;
 
 interface ProductTableProps {
   products: Product[];
@@ -117,8 +125,11 @@ export default function ProductTable({ products: initial }: ProductTableProps) {
               <TableHead className="text-[11px] tracking-widest uppercase text-gray-400 font-medium">
                 Category
               </TableHead>
-              <TableHead className="text-[11px] tracking-widests uppercase text-gray-400 font-medium">
+              <TableHead className="text-[11px] tracking-widest uppercase text-gray-400 font-medium">
                 Price
+              </TableHead>
+              <TableHead className="text-[11px] tracking-widest uppercase text-gray-400 font-medium">
+                Flags
               </TableHead>
               <TableHead className="text-[11px] tracking-widest uppercase text-gray-400 font-medium">
                 Sizes
@@ -131,7 +142,7 @@ export default function ProductTable({ products: initial }: ProductTableProps) {
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-16 text-gray-400 text-sm">
+                <TableCell colSpan={7} className="text-center py-16 text-gray-400 text-sm">
                   {initial.length === 0
                     ? "No products yet. Add your first product."
                     : "No products match your search."}
@@ -171,18 +182,48 @@ export default function ProductTable({ products: initial }: ProductTableProps) {
                     </Badge>
                   </TableCell>
                   <TableCell className="font-medium text-sm">
-                    ${product.price.toLocaleString()}
+                    <div>
+                      {product.status?.includes("On Sale") && product.salePrice ? (
+                        <>
+                          <span className="text-red-600">${product.salePrice.toLocaleString()}</span>
+                          <span className="text-gray-400 text-xs line-through ms-1.5">${product.price.toLocaleString()}</span>
+                        </>
+                      ) : (
+                        `$${product.price.toLocaleString()}`
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
-                      {product.sizes.map((s) => (
-                        <span
-                          key={s}
-                          className="text-[10px] border border-gray-200 px-1.5 py-0.5 text-gray-500"
-                        >
-                          {s}
+                      {STATUS_FLAGS.map(({ key, label, color, bg }) =>
+                        product.status?.includes(key) ? (
+                          <span
+                            key={key}
+                            className={`inline-flex items-center gap-0.5 text-[9px] tracking-widest uppercase font-semibold px-1.5 py-0.5 ${color} ${bg}`}
+                          >
+                            <Check size={9} strokeWidth={3} />
+                            {label}
+                          </span>
+                        ) : null
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {product.ml ? (
+                        <span className="text-[10px] border border-gray-200 px-1.5 py-0.5 text-gray-500">
+                          {product.ml} ML
                         </span>
-                      ))}
+                      ) : (
+                        product.sizes.map((s) => (
+                          <span
+                            key={s}
+                            className="text-[10px] border border-gray-200 px-1.5 py-0.5 text-gray-500"
+                          >
+                            {s}
+                          </span>
+                        ))
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>

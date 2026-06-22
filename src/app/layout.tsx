@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Playfair_Display, Cairo } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
+import UserListsProvider from "@/components/UserListsProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -56,7 +57,9 @@ export default async function RootLayout({
       >
         <body className="min-h-full flex flex-col">
           <NextIntlClientProvider locale={locale} messages={messages}>
-            {children}
+            <UserListsProvider>
+              {children}
+            </UserListsProvider>
           </NextIntlClientProvider>
         </body>
       </html>

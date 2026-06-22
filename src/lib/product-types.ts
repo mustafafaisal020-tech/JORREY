@@ -47,7 +47,7 @@ export const CATEGORIES = [
   "Knitwear",
 ] as const;
 
-export const SIZES = ["XS", "S", "M", "L", "XL", "XXL"] as const;
+export const SIZES = ["XS", "S", "M", "L", "XL"] as const;
 
 export const SKINCARE_TYPES = [
   "Cleanser",
@@ -61,7 +61,7 @@ export const SKINCARE_TYPES = [
 
 export type SkincareType = (typeof SKINCARE_TYPES)[number];
 
-export const NO_SIZE_CATEGORIES = ["skincare", "accessories"];
+export const NO_SIZE_CATEGORIES = ["skincare", "makeup", "accessories"];
 
 export const PRODUCT_COLORS = [
   { name: "Black",      hex: "#000000" },
@@ -107,4 +107,12 @@ export function categoryHasSizes(category: string): boolean {
 
 export function isSkincareCat(category: string): boolean {
   return category.toLowerCase().replace(/\s/g, "") === "skincare";
+}
+
+export function isMakeupCat(category: string): boolean {
+  return category.toLowerCase().replace(/\s/g, "") === "makeup";
+}
+
+export function isLiquidCat(category: string): boolean {
+  return isSkincareCat(category) || isMakeupCat(category);
 }
