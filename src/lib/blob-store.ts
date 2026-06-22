@@ -1,20 +1,20 @@
-/**
- * Storage abstraction:
- *   - Development (no VERCEL env var): reads/writes local data/*.json files
- *   - Production (Vercel): reads/writes Vercel Blob; falls back to committed
- *     data files on first read before any blob exists
- *
- * CDN cache-busting: Vercel Blob serves public files via CDN. After a put(),
- * a subsequent fetch of the same URL can return a stale cached response.
- * We append ?t=<epoch-ms> to every read URL so each request hits origin.
- */
-import { put, list } from "@vercel/blob";
+import { put } from "@vercel/blob";
 import fs from "fs";
 import path from "path";
 
 const IS_VERCEL = !!process.env.VERCEL;
 const DATA_DIR = path.join(process.cwd(), "data");
 const BLOB_PREFIX = "jorrey-data/";
+
+// Derive the public base URL from the token — avoids calling list() on every
+// read, which burned through Advanced Operations (2k/month free limit).
+// Token format: vercel_blob_rw_<STORE_ID>_<SECRET>
+function getBlobBaseUrl(): string {
+  const token = process.env.BLOB_READ_WRITE_TOKEN ?? "";
+  const match = token.match(/vercel_blob_rw_([^_]+)_/i);
+  if (!match) throw new Error("BLOB_READ_WRITE_TOKEN is missing or malformed");
+  return `https://${match[1].toLowerCase()}.public.blob.vercel-storage.com`;
+}
 
 function readFromFile<T>(key: string, fallback: T): T {
   const file = path.join(DATA_DIR, `${key}.json`);
@@ -38,20 +38,16 @@ export async function readStore<T>(key: string, fallback: T): Promise<T> {
   if (!IS_VERCEL) return readFromFile(key, fallback);
 
   try {
-    const { blobs } = await list({ prefix: `${BLOB_PREFIX}${key}.json` });
-    if (blobs.length > 0) {
-      // Append timestamp to bypass CDN cache — ensures we always get the
-      // version just written, not a stale edge-cached copy.
-      const blobUrl = new URL(blobs[0].url);
-      blobUrl.searchParams.set("t", Date.now().toString());
-      const res = await fetch(blobUrl.toString(), { cache: "no-store" });
-      if (res.ok) return (await res.json()) as T;
-    }
+    // Construct URL directly — no list() call needed since we use addRandomSuffix: false.
+    // Append ?t= to bypass CDN cache so we always see the latest write.
+    const url = `${getBlobBaseUrl()}/${BLOB_PREFIX}${key}.json?t=${Date.now()}`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (res.ok) return (await res.json()) as T;
+    // 404 means blob not yet created — fall through to seed file
   } catch {
-    // fall through to committed file
+    // fall through
   }
 
-  // No blob written yet — use data committed in the repo as seed
   return readFromFile(key, fallback);
 }
 
