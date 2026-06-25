@@ -10,6 +10,7 @@ import LanguageSwitcher from "./LanguageSwitcher";
 import { useCart } from "./CartProvider";
 import { useUserLists } from "./UserListsProvider";
 import CustomerAccountModal from "./CustomerAccountModal";
+import PWAInstallButton from "./PWAInstallButton";
 import type { Category } from "@/lib/category-types";
 
 interface NavbarProps {
@@ -56,25 +57,24 @@ export default function Navbar({ categories = [] }: NavbarProps) {
           </Link>
 
           {/* Desktop nav — DB categories */}
-          {categories.length > 0 && (
-            <nav className="hidden md:flex items-center gap-8" dir={isRTL ? "rtl" : "ltr"}>
-              {categories.map((cat) => {
-                const label = isRTL && cat.nameAr ? cat.nameAr : cat.name;
-                return (
-                  <Link
-                    key={cat.id}
-                    href={`/category/${cat.slug}`}
-                    className="text-jorrey-white/70 hover:text-jorrey-gold text-xs tracking-widests uppercase transition-colors duration-300"
-                  >
-                    {label}
-                  </Link>
-                );
-              })}
-            </nav>
-          )}
+          <nav className="hidden md:flex items-center gap-8" dir={isRTL ? "rtl" : "ltr"}>
+            {categories.map((cat) => {
+              const label = isRTL && cat.nameAr ? cat.nameAr : cat.name;
+              return (
+                <Link
+                  key={cat.id}
+                  href={`/category/${cat.slug}`}
+                  className="text-jorrey-white/70 hover:text-jorrey-gold text-xs tracking-widests uppercase transition-colors duration-300"
+                >
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
 
-          {/* Desktop right: language | cart | account */}
+          {/* Desktop right: install | language | cart | account */}
           <div className="hidden md:flex items-center gap-5">
+            <PWAInstallButton isRTL={isRTL} />
             <LanguageSwitcher />
             <button
               onClick={() => setOpen(true)}
@@ -140,43 +140,34 @@ export default function Navbar({ categories = [] }: NavbarProps) {
             transition={{ duration: 0.3 }}
             className="fixed inset-0 z-40 bg-jorrey-black flex flex-col items-center justify-center gap-10 md:hidden"
           >
-            {categories.length > 0 ? (
-              categories.map((cat, i) => {
-                const label = isRTL && cat.nameAr ? cat.nameAr : cat.name;
-                return (
-                  <motion.div
-                    key={cat.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.07 }}
+            {categories.map((cat, i) => {
+              const label = isRTL && cat.nameAr ? cat.nameAr : cat.name;
+              return (
+                <motion.div
+                  key={cat.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.07 }}
+                >
+                  <Link
+                    href={`/category/${cat.slug}`}
+                    onClick={() => setMenuOpen(false)}
+                    className="font-serif text-3xl text-jorrey-white hover:text-jorrey-gold italic transition-colors"
                   >
-                    <Link
-                      href={`/category/${cat.slug}`}
-                      onClick={() => setMenuOpen(false)}
-                      className="font-serif text-3xl text-jorrey-white hover:text-jorrey-gold italic transition-colors"
-                    >
-                      {label}
-                    </Link>
-                  </motion.div>
-                );
-              })
-            ) : (
-              <Link
-                href="/#collections"
-                onClick={() => setMenuOpen(false)}
-                className="font-serif text-3xl text-jorrey-white hover:text-jorrey-gold italic transition-colors"
-              >
-                Shop
-              </Link>
-            )}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
+                    {label}
+                  </Link>
+                </motion.div>
+              );
+            })}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="flex flex-col items-center gap-6">
               <button
                 onClick={() => { setMenuOpen(false); setAccountOpen(true); }}
                 className={`flex items-center gap-2 text-sm tracking-widests uppercase transition-colors ${user ? "text-jorrey-gold" : "text-jorrey-white/50 hover:text-jorrey-gold"}`}
               >
                 <User size={14} />
-                Account
+                {isRTL ? "الحساب" : "Account"}
               </button>
+              <PWAInstallButton isRTL={isRTL} compact={false} />
             </motion.div>
           </motion.div>
         )}
