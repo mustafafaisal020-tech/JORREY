@@ -1,15 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useSignIn, useSignUp, useUser, useClerk } from "@clerk/nextjs";
+import { useSignIn, useUser, useClerk } from "@clerk/nextjs";
 import {
   X,
   LogOut,
   User as UserIcon,
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
   Check,
   Phone,
   MapPin,
@@ -28,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { CustomerProfile, NotificationChannel } from "@/lib/customer-types";
+import type { Order } from "@/lib/order-types";
 import type { Product } from "@/lib/product-types";
 import { categoryHasSizes } from "@/lib/product-types";
 import { useCart } from "./CartProvider";
@@ -38,8 +35,7 @@ interface Props {
   onClose: () => void;
 }
 
-type AuthTab = "signin" | "signup";
-type AccountTab = "profile" | "favorites" | "watchlist" | "notifications";
+type AccountTab = "profile" | "orders" | "favorites" | "watchlist" | "notifications";
 
 export default function CustomerAccountModal({ open, onClose }: Props) {
   const t = useTranslations("account");
@@ -48,8 +44,7 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
 
   const { user, isLoaded: userLoaded } = useUser();
   const { signIn } = useSignIn();
-  const { signUp } = useSignUp();
-  const { signOut } = useClerk();
+  const { signOut, setActive } = useClerk();
   const { addItem } = useCart();
   const {
     favorites,
@@ -62,20 +57,25 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
     markAllRead,
   } = useUserLists();
 
-  // ── Auth state ──────────────────────────────────────────────
-  const [authTab, setAuthTab] = useState<AuthTab>("signin");
-  const [showPass, setShowPass] = useState(false);
+  // ── Phone-first auth state ──────────────────────────────────
+  // step: "phone" → enter number; "otp" → enter WhatsApp code;
+  //       "register" → new user, enter name/email; "signing_in" → establishing session
+  type AuthStep = "phone" | "otp" | "register" | "signing_in";
+  const [authStep, setAuthStep] = useState<AuthStep>("phone");
+  const [authPhone, setAuthPhone] = useState("");
+  const [authPhoneError, setAuthPhoneError] = useState("");
+  const [authOtp, setAuthOtp] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
-  const [verifying, setVerifying] = useState(false);
-  const [code, setCode] = useState("");
-  const [verifyEmail, setVerifyEmail] = useState("");
-  const [siEmail, setSiEmail] = useState("");
-  const [siPass, setSiPass] = useState("");
-  const [suFirst, setSuFirst] = useState("");
-  const [suLast, setSuLast] = useState("");
-  const [suEmail, setSuEmail] = useState("");
-  const [suPass, setSuPass] = useState("");
+  const [verifiedToken, setVerifiedToken] = useState("");
+  // Registration extras (only for new users)
+  const [regFirstName, setRegFirstName] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+
+  // ── Orders state ────────────────────────────────────────────
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   // ── Account tab state ────────────────────────────────────────
   const [accountTab, setAccountTab] = useState<AccountTab>("profile");
@@ -134,6 +134,18 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
     if (open && user) loadProfile();
   }, [open, user, loadProfile]);
 
+  // Load orders when orders tab is active
+  useEffect(() => {
+    if (accountTab !== "orders" || !user) return;
+    setOrdersLoading(true);
+    fetch("/api/customers/me/orders")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: Order[]) => setOrders(data))
+      .catch(() => setOrders([]))
+      .finally(() => setOrdersLoading(false));
+  }, [accountTab, user]);
+
+
   // Mark notifications read when notifications tab is opened
   useEffect(() => {
     if (accountTab === "notifications" && unreadNotifications > 0) {
@@ -141,80 +153,164 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
     }
   }, [accountTab, unreadNotifications, markAllRead]);
 
-  function clerkErrMsg(err: unknown): string {
-    const e = err as { errors?: Array<{ longMessage?: string; message?: string }> };
-    return e?.errors?.[0]?.longMessage ?? e?.errors?.[0]?.message ?? "Something went wrong.";
+  function normalisePhone(raw: string): string {
+    // Ensure E.164: strip spaces, add + if missing
+    const stripped = raw.replace(/\s/g, "");
+    return stripped.startsWith("+") ? stripped : `+${stripped}`;
   }
 
-  async function handleSignIn(e: React.FormEvent) {
-    e.preventDefault();
-    if (!signIn) return;
-    setAuthLoading(true);
-    setAuthError("");
-    try {
-      const { error: pwErr } = await signIn.password({ emailAddress: siEmail, password: siPass });
-      if (pwErr) {
-        setAuthError(pwErr.longMessage ?? pwErr.message ?? "Incorrect email or password.");
-        return;
-      }
-      if (signIn.status === "complete") await signIn.finalize();
-      else setAuthError("Additional verification required. Please try again.");
-    } catch (err) {
-      setAuthError(clerkErrMsg(err));
-    } finally {
-      setAuthLoading(false);
-    }
+  function validatePhone(raw: string): string {
+    const digits = raw.replace(/\D/g, "");
+    if (!raw.trim()) return t("phone_label").replace(" *", "") + " " + (isRTL ? "مطلوب" : "is required");
+    if (digits.length < 7) return isRTL ? "رقم هاتف غير صالح" : "Invalid phone number";
+    return "";
   }
 
-  async function handleSignUp(e: React.FormEvent) {
+  async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault();
-    if (!signUp) return;
-    setAuthLoading(true);
+    const phoneErr = validatePhone(authPhone);
+    if (phoneErr) { setAuthPhoneError(phoneErr); return; }
+    setAuthPhoneError("");
     setAuthError("");
+    setAuthLoading(true);
     try {
-      const { error: suErr } = await signUp.password({
-        emailAddress: suEmail,
-        password: suPass,
-        firstName: suFirst,
-        lastName: suLast || undefined,
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: normalisePhone(authPhone), locale }),
       });
-      if (suErr) {
-        setAuthError(suErr.longMessage ?? suErr.message ?? "Could not create account.");
+      if (!res.ok) {
+        const { error } = await res.json();
+        setAuthError(error ?? "Could not send code.");
         return;
       }
-      if (signUp.status === "complete") {
-        await signUp.finalize();
-        return;
-      }
-      const { error: codeErr } = await signUp.verifications.sendEmailCode();
-      if (codeErr) {
-        setAuthError(codeErr.longMessage ?? codeErr.message ?? "Could not send code.");
-        return;
-      }
-      setVerifyEmail(suEmail);
-      setVerifying(true);
-    } catch (err) {
-      setAuthError(clerkErrMsg(err));
+      setAuthStep("otp");
+    } catch {
+      setAuthError("Network error. Please try again.");
     } finally {
       setAuthLoading(false);
     }
   }
 
-  async function handleVerify(e: React.FormEvent) {
+  async function handleVerifyOtp(e: React.FormEvent) {
     e.preventDefault();
-    if (!signUp) return;
-    setAuthLoading(true);
+    if (!authOtp || authOtp.length < 6) {
+      setAuthError(isRTL ? "أدخل الرمز المكون من 6 أرقام" : "Enter the 6-digit code.");
+      return;
+    }
     setAuthError("");
+    setAuthLoading(true);
     try {
-      const { error: verifyErr } = await signUp.verifications.verifyEmailCode({ code });
-      if (verifyErr) {
-        setAuthError(verifyErr.longMessage ?? verifyErr.message ?? "Invalid code.");
+      const phone = normalisePhone(authPhone);
+      // Exchange OTP for a short-lived verified-phone token
+      const verifyRes = await fetch("/api/auth/phone-verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, code: authOtp }),
+      });
+      if (!verifyRes.ok) {
+        const { error } = await verifyRes.json();
+        setAuthError(error ?? "Invalid code.");
         return;
       }
-      if (signUp.status === "complete") await signUp.finalize();
-      else setAuthError("Verification incomplete. Please try again.");
-    } catch (err) {
-      setAuthError(clerkErrMsg(err));
+      const { verifiedToken: vt } = await verifyRes.json();
+      setVerifiedToken(vt);
+
+      // Try to sign in — will 404 if no account exists
+      const siRes = await fetch("/api/auth/phone-signin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ verifiedToken: vt }),
+      });
+
+      if (siRes.ok) {
+        // Account found — create Clerk session
+        const { token } = await siRes.json();
+        await clerkSignInWithToken(token);
+      } else if (siRes.status === 404) {
+        // No account — ask user to register
+        setAuthStep("register");
+      } else {
+        const { error } = await siRes.json();
+        setAuthError(error ?? "Sign-in failed.");
+      }
+    } catch {
+      setAuthError("Network error. Please try again.");
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault();
+    if (!regFirstName.trim()) {
+      setAuthError(isRTL ? "الاسم مطلوب" : "Name is required.");
+      return;
+    }
+    setAuthError("");
+    setAuthLoading(true);
+    try {
+      const res = await fetch("/api/auth/phone-register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          verifiedToken,
+          firstName: regFirstName.trim(),
+          email: regEmail.trim() || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const { error } = await res.json();
+        if (error === "already_exists") {
+          setAuthError(t("account_exists_error"));
+        } else if (error === "Token expired. Please restart verification.") {
+          // Token expired — restart
+          setAuthStep("phone");
+          setAuthOtp("");
+          setVerifiedToken("");
+          setAuthError(isRTL ? "انتهت صلاحية الجلسة. ابدأ من جديد." : "Session expired. Please start over.");
+        } else {
+          setAuthError(error ?? "Registration failed.");
+        }
+        return;
+      }
+      const { token } = await res.json();
+      await clerkSignInWithToken(token);
+    } catch {
+      setAuthError("Network error. Please try again.");
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function clerkSignInWithToken(token: string) {
+    if (!signIn || !setActive) return;
+    setAuthStep("signing_in");
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = await (signIn as any).create({ strategy: "ticket", ticket: token });
+      const sessionId = result?.createdSessionId ?? result?.session?.id;
+      if (sessionId) {
+        await setActive({ session: sessionId });
+      } else {
+        setAuthStep("phone");
+        setAuthError(isRTL ? "فشل تسجيل الدخول. حاول مرة أخرى." : "Sign-in failed. Please try again.");
+      }
+    } catch {
+      setAuthStep("phone");
+      setAuthError(isRTL ? "فشل تسجيل الدخول. حاول مرة أخرى." : "Sign-in failed. Please try again.");
+    }
+  }
+
+  async function handleResendOtp() {
+    setAuthError("");
+    setAuthLoading(true);
+    try {
+      await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: normalisePhone(authPhone), locale }),
+      });
     } finally {
       setAuthLoading(false);
     }
@@ -322,16 +418,14 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
   }
 
   function handleClose() {
-    setSiEmail("");
-    setSiPass("");
-    setSuFirst("");
-    setSuLast("");
-    setSuEmail("");
-    setSuPass("");
+    setAuthStep("phone");
+    setAuthPhone("");
+    setAuthPhoneError("");
+    setAuthOtp("");
     setAuthError("");
-    setVerifying(false);
-    setCode("");
-    setShowPass(false);
+    setVerifiedToken("");
+    setRegFirstName("");
+    setRegEmail("");
     setProfileError("");
     setProfileSaved(false);
     setBagProduct(null);
@@ -344,6 +438,7 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
 
   const ACCOUNT_TABS = [
     { id: "profile" as AccountTab, icon: UserIcon, label: t("tab_profile") },
+    { id: "orders" as AccountTab, icon: ShoppingBag, label: t("tab_orders") },
     {
       id: "favorites" as AccountTab,
       icon: Heart,
@@ -382,9 +477,9 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
             <h2 className="font-serif text-lg text-jorrey-black tracking-wide">
               {userLoaded && user
                 ? t("title")
-                : authTab === "signin"
-                ? t("sign_in")
-                : t("register")}
+                : authStep === "register"
+                ? t("complete_registration")
+                : t("sign_in")}
             </h2>
             <button
               onClick={handleClose}
@@ -615,6 +710,142 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
                       )}
                     </Button>
                   </form>
+                )}
+
+                {/* ── Orders tab ── */}
+                {accountTab === "orders" && (
+                  <div>
+                    {ordersLoading ? (
+                      <p className="text-sm text-gray-400 py-8 text-center">Loading…</p>
+                    ) : selectedOrder ? (
+                      /* Order detail */
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedOrder(null)}
+                          className="flex items-center gap-1.5 text-[10px] tracking-widest uppercase text-gray-400 hover:text-jorrey-black mb-4 transition-colors"
+                        >
+                          <span>{isRTL ? "→" : "←"}</span>
+                          {t("back")}
+                        </button>
+                        <p className="font-mono text-[10px] text-gray-400 mb-0.5">{selectedOrder.id}</p>
+                        <p className="font-serif text-base text-jorrey-black mb-4">{t("order_detail_title")}</p>
+
+                        {/* Status badge */}
+                        <div className="mb-4">
+                          <span className={`text-[9px] tracking-widest uppercase font-bold px-2.5 py-1 ${
+                            selectedOrder.status === "processing" ? "bg-yellow-100 text-yellow-800" :
+                            selectedOrder.status === "shipped" ? "bg-blue-100 text-blue-800" :
+                            selectedOrder.status === "delivered" ? "bg-green-100 text-green-800" :
+                            "bg-red-100 text-red-800"
+                          }`}>
+                            {t(`status_${selectedOrder.status}`)}
+                          </span>
+                        </div>
+
+                        {/* Items */}
+                        <div className="border-t border-gray-100 pt-3 mb-3">
+                          <p className="text-[10px] tracking-widest uppercase text-gray-400 mb-2">{t("order_items")}</p>
+                          <div className="space-y-2">
+                            {selectedOrder.items.map((item, i) => (
+                              <div key={i} className="flex justify-between text-sm">
+                                <span className="text-jorrey-black">
+                                  {isRTL && item.nameAr ? item.nameAr : item.name}
+                                  {item.size && item.size !== "One Size" && (
+                                    <span className="text-gray-400 ms-1">/ {item.size}</span>
+                                  )}
+                                  <span className="text-gray-400 ms-1">×{item.quantity}</span>
+                                </span>
+                                <span className="font-medium text-jorrey-black">
+                                  {selectedOrder.currencySymbol}{(item.unitPrice * item.quantity).toLocaleString()}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Totals */}
+                        <div className="border-t border-gray-100 pt-3 space-y-1.5 text-sm mb-3">
+                          <div className="flex justify-between text-gray-500">
+                            <span>{t("order_subtotal")}</span>
+                            <span>{selectedOrder.currencySymbol}{selectedOrder.subtotal.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between text-gray-500">
+                            <span>{t("order_shipping")}</span>
+                            <span>{selectedOrder.shipping === 0 ? t("order_free") : `${selectedOrder.currencySymbol}${selectedOrder.shipping.toLocaleString()}`}</span>
+                          </div>
+                          {selectedOrder.discount > 0 && (
+                            <div className="flex justify-between text-jorrey-gold">
+                              <span>{t("order_discount")}</span>
+                              <span>-{selectedOrder.currencySymbol}{selectedOrder.discount.toLocaleString()}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between font-semibold border-t border-gray-100 pt-2 text-jorrey-black">
+                            <span>{t("order_total")}</span>
+                            <span>{selectedOrder.currencySymbol}{selectedOrder.total.toLocaleString()}</span>
+                          </div>
+                        </div>
+
+                        {/* Address */}
+                        {selectedOrder.address.city && (
+                          <div className="border-t border-gray-100 pt-3 text-sm mb-3">
+                            <p className="text-[10px] tracking-widest uppercase text-gray-400 mb-1">{t("order_address")}</p>
+                            <p className="text-gray-600 leading-relaxed">
+                              {[selectedOrder.address.street, selectedOrder.address.district, selectedOrder.address.city, selectedOrder.address.country]
+                                .filter(Boolean).join(", ")}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Date */}
+                        <p className="text-[10px] text-gray-300 mt-2">
+                          {t("order_date")}: {new Date(selectedOrder.createdAt).toLocaleDateString(locale === "ar" ? "ar-AE" : "en-US", { year: "numeric", month: "long", day: "numeric" })}
+                        </p>
+                      </div>
+                    ) : orders.length === 0 ? (
+                      <div className="py-12 text-center">
+                        <ShoppingBag size={28} className="mx-auto mb-3 text-gray-200" />
+                        <p className="text-sm text-gray-400">{t("orders_empty")}</p>
+                        <p className="text-xs text-gray-300 mt-1">{t("orders_hint")}</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {orders.map((order) => (
+                          <button
+                            key={order.id}
+                            type="button"
+                            onClick={() => setSelectedOrder(order)}
+                            className="w-full text-start border border-gray-100 p-4 hover:border-jorrey-gold/30 transition-colors"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="font-mono text-[10px] text-gray-400 mb-0.5">{order.id}</p>
+                                <p className="text-sm text-jorrey-black">
+                                  {order.items.length} {order.items.length === 1 ? t("order_items").replace(/s$/, "") : t("order_items")}
+                                </p>
+                                <p className="text-xs text-gray-400 mt-0.5">
+                                  {new Date(order.createdAt).toLocaleDateString(locale === "ar" ? "ar-AE" : "en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                </p>
+                              </div>
+                              <div className="flex flex-col items-end gap-1.5 shrink-0">
+                                <span className={`text-[9px] tracking-widest uppercase font-bold px-2 py-0.5 ${
+                                  order.status === "processing" ? "bg-yellow-100 text-yellow-800" :
+                                  order.status === "shipped" ? "bg-blue-100 text-blue-800" :
+                                  order.status === "delivered" ? "bg-green-100 text-green-800" :
+                                  "bg-red-100 text-red-800"
+                                }`}>
+                                  {t(`status_${order.status}`)}
+                                </span>
+                                <p className="text-sm font-medium text-jorrey-black">
+                                  {order.currencySymbol}{order.total.toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {/* ── Favorites tab ── */}
@@ -877,169 +1108,143 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
                 )}
               </div>
             ) : (
-              <>
-                {/* ── Auth tabs ── */}
-                <div className="flex border-b border-gray-100 mb-6 -mx-6 px-6">
-                  {(["signin", "signup"] as AuthTab[]).map((t2) => (
-                    <button
-                      key={t2}
-                      type="button"
-                      onClick={() => {
-                        setAuthTab(t2);
-                        setAuthError("");
-                        setVerifying(false);
-                      }}
-                      className={cn(
-                        "flex-1 pb-3 text-xs tracking-widest uppercase font-medium transition-colors border-b-2 -mb-px",
-                        authTab === t2
-                          ? "border-jorrey-black text-jorrey-black"
-                          : "border-transparent text-gray-400 hover:text-gray-600"
-                      )}
-                    >
-                      {t2 === "signin" ? t("sign_in") : t("register")}
-                    </button>
-                  ))}
-                </div>
-
-                {authError && (
-                  <p className="text-xs text-red-500 bg-red-50 px-3 py-2 mb-4">{authError}</p>
+              <div className="space-y-5">
+                {/* ── Step: signing_in spinner ── */}
+                {authStep === "signing_in" && (
+                  <div className="py-10 text-center">
+                    <div className="w-10 h-10 border-2 border-jorrey-gold border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-sm text-gray-400">{t("signing_in")}</p>
+                  </div>
                 )}
 
-                {/* Sign In */}
-                {authTab === "signin" && (
-                  <form onSubmit={handleSignIn} className="space-y-4">
-                    <div className="relative">
-                      <Mail
-                        size={13}
-                        className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                      />
-                      <Input
-                        type="email"
-                        placeholder={t("email")}
-                        value={siEmail}
-                        onChange={(e) => setSiEmail(e.target.value)}
-                        required
-                        className={cn(inp, "ps-9")}
-                      />
+                {/* ── Step: enter phone ── */}
+                {authStep === "phone" && (
+                  <form onSubmit={handleSendOtp} className="space-y-4">
+                    <div className="text-center pb-2">
+                      <div className="w-11 h-11 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Phone size={20} className="text-green-600" />
+                      </div>
+                      <p className="text-xs text-gray-400">{t("phone_auth_hint")}</p>
                     </div>
-                    <div className="relative">
-                      <Lock
-                        size={13}
-                        className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                      />
-                      <Input
-                        type={showPass ? "text" : "password"}
-                        placeholder={t("password")}
-                        value={siPass}
-                        onChange={(e) => setSiPass(e.target.value)}
-                        required
-                        className={cn(inp, "ps-9 pe-9")}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPass((v) => !v)}
-                        className="absolute end-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showPass ? <EyeOff size={13} /> : <Eye size={13} />}
-                      </button>
+                    <div className="space-y-1">
+                      <div className="relative">
+                        <Phone size={13} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                        <Input
+                          type="tel"
+                          placeholder={isRTL ? "+٩٦٤ ٧٧٠ ٠٠٠ ٠٠٠٠" : "+964 770 000 0000"}
+                          value={authPhone}
+                          onChange={(e) => { setAuthPhone(e.target.value); setAuthPhoneError(""); }}
+                          dir="ltr"
+                          inputMode="tel"
+                          className={cn(inp, "ps-9")}
+                          autoFocus
+                        />
+                      </div>
+                      {authPhoneError && <p className="text-xs text-red-500">{authPhoneError}</p>}
                     </div>
+                    {authError && <p className="text-xs text-red-500 bg-red-50 px-3 py-2">{authError}</p>}
                     <Button
                       type="submit"
                       disabled={authLoading}
                       className="w-full rounded-none bg-jorrey-black hover:bg-jorrey-gold hover:text-jorrey-black text-white text-xs tracking-widest uppercase font-semibold py-5 transition-colors"
                     >
-                      {authLoading ? t("signing_in") : t("sign_in")}
+                      {authLoading ? t("sending_code") : t("send_code")}
                     </Button>
                   </form>
                 )}
 
-                {/* Sign Up */}
-                {authTab === "signup" && !verifying && (
-                  <form onSubmit={handleSignUp} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <Input
-                        placeholder={t("first_name")}
-                        value={suFirst}
-                        onChange={(e) => setSuFirst(e.target.value)}
-                        required
-                        className={inp}
-                      />
-                      <Input
-                        placeholder={t("last_name")}
-                        value={suLast}
-                        onChange={(e) => setSuLast(e.target.value)}
-                        className={inp}
-                      />
+                {/* ── Step: enter OTP ── */}
+                {authStep === "otp" && (
+                  <form onSubmit={handleVerifyOtp} className="space-y-4">
+                    <div className="text-center pb-1">
+                      <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Phone size={18} className="text-green-600" />
+                      </div>
+                      <p className="text-sm font-medium text-jorrey-black">{t("verify_phone_title")}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {t("code_sent").replace("{phone}", authPhone)}
+                      </p>
                     </div>
-                    <div className="relative">
-                      <Mail
-                        size={13}
-                        className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                      />
-                      <Input
-                        type="email"
-                        placeholder={t("email")}
-                        value={suEmail}
-                        onChange={(e) => setSuEmail(e.target.value)}
-                        required
-                        className={cn(inp, "ps-9")}
-                      />
-                    </div>
-                    <div className="relative">
-                      <Lock
-                        size={13}
-                        className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                      />
-                      <Input
-                        type={showPass ? "text" : "password"}
-                        placeholder={t("password")}
-                        value={suPass}
-                        onChange={(e) => setSuPass(e.target.value)}
-                        required
-                        className={cn(inp, "ps-9 pe-9")}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPass((v) => !v)}
-                        className="absolute end-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showPass ? <EyeOff size={13} /> : <Eye size={13} />}
-                      </button>
-                    </div>
+                    <Input
+                      placeholder="000000"
+                      value={authOtp}
+                      onChange={(e) => setAuthOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      required
+                      dir="ltr"
+                      className={cn(inp, "text-center tracking-widest font-mono text-lg")}
+                      maxLength={6}
+                      inputMode="numeric"
+                      autoFocus
+                    />
+                    {authError && <p className="text-xs text-red-500 bg-red-50 px-3 py-2">{authError}</p>}
                     <Button
                       type="submit"
-                      disabled={authLoading}
+                      disabled={authLoading || authOtp.length < 6}
+                      className="w-full rounded-none bg-jorrey-black hover:bg-jorrey-gold hover:text-jorrey-black text-white text-xs tracking-widest uppercase font-semibold py-5 transition-colors"
+                    >
+                      {authLoading ? t("verifying") : t("verify_otp_btn")}
+                    </Button>
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => { setAuthStep("phone"); setAuthOtp(""); setAuthError(""); }}
+                        className="text-[10px] text-gray-400 hover:text-jorrey-black transition-colors"
+                      >
+                        {t("back")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleResendOtp}
+                        disabled={authLoading}
+                        className="text-[10px] text-gray-400 hover:text-jorrey-black underline underline-offset-2 transition-colors"
+                      >
+                        {authLoading ? "…" : t("resend_code")}
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* ── Step: complete registration (new user) ── */}
+                {authStep === "register" && (
+                  <form onSubmit={handleRegister} className="space-y-4">
+                    <p className="text-xs text-gray-400 bg-gray-50 px-3 py-2.5 leading-relaxed">
+                      {t("no_account_found")}{" "}
+                      <span className="text-jorrey-black font-medium">{authPhone}</span>
+                    </p>
+                    <p className="text-[10px] tracking-widest uppercase text-gray-400">{t("complete_registration")}</p>
+                    <Input
+                      placeholder={t("name_required")}
+                      value={regFirstName}
+                      onChange={(e) => setRegFirstName(e.target.value)}
+                      required
+                      className={inp}
+                      autoFocus
+                    />
+                    <Input
+                      type="email"
+                      placeholder={t("email_optional")}
+                      value={regEmail}
+                      onChange={(e) => setRegEmail(e.target.value)}
+                      className={inp}
+                    />
+                    {authError && <p className="text-xs text-red-500 bg-red-50 px-3 py-2">{authError}</p>}
+                    <Button
+                      type="submit"
+                      disabled={authLoading || !regFirstName.trim()}
                       className="w-full rounded-none bg-jorrey-black hover:bg-jorrey-gold hover:text-jorrey-black text-white text-xs tracking-widest uppercase font-semibold py-5 transition-colors"
                     >
                       {authLoading ? t("creating") : t("register")}
                     </Button>
-                  </form>
-                )}
-
-                {/* Email verification */}
-                {authTab === "signup" && verifying && (
-                  <form onSubmit={handleVerify} className="space-y-4">
-                    <p className="text-sm text-gray-500 leading-relaxed">
-                      {t("verify_desc").replace("{email}", verifyEmail)}
-                    </p>
-                    <Input
-                      placeholder={t("verify_placeholder")}
-                      value={code}
-                      onChange={(e) => setCode(e.target.value)}
-                      required
-                      className={cn(inp, "text-center tracking-widest font-mono")}
-                      maxLength={6}
-                    />
-                    <Button
-                      type="submit"
-                      disabled={authLoading}
-                      className="w-full rounded-none bg-jorrey-black hover:bg-jorrey-gold hover:text-jorrey-black text-white text-xs tracking-widest uppercase font-semibold py-5 transition-colors"
+                    <button
+                      type="button"
+                      onClick={() => { setAuthStep("phone"); setAuthOtp(""); setAuthError(""); setVerifiedToken(""); }}
+                      className="w-full text-[10px] text-gray-400 hover:text-jorrey-black transition-colors text-center"
                     >
-                      {authLoading ? t("verifying") : t("verify_btn")}
-                    </Button>
+                      {t("back")}
+                    </button>
                   </form>
                 )}
-              </>
+              </div>
             )}
           </div>
         </DialogPrimitive.Popup>

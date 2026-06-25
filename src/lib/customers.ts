@@ -51,6 +51,15 @@ export async function getCustomer(id: string): Promise<CustomerProfile | undefin
   return (await read()).find((c) => c.id === id);
 }
 
+export async function getCustomerByPhone(phone: string): Promise<CustomerProfile | undefined> {
+  const normalised = phone.replace(/\s/g, "");
+  return (await read()).find(
+    (c) =>
+      (c.phone && c.phone.replace(/\s/g, "") === normalised) ||
+      (c.whatsappNumber && c.whatsappNumber.replace(/\s/g, "") === normalised)
+  );
+}
+
 export async function upsertCustomer(
   id: string,
   input: CustomerProfileInput
