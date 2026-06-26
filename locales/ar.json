@@ -70,7 +70,13 @@
     "sale": {
         "eyebrow": "لفترة محدودة",
         "title": "تخفيضات",
-        "empty": "لا توجد منتجات في التخفيضات حالياً."
+        "empty": "لا توجد منتجات في التخفيضات حالياً.",
+        "countdown_label": "ينتهي العرض خلال",
+        "countdown_days": "أيام",
+        "countdown_hours": "ساعات",
+        "countdown_minutes": "دقائق",
+        "countdown_seconds": "ثوانٍ",
+        "countdown_ended": "انتهى العرض"
     },
     "new_arrival": {
         "eyebrow": "وصل حديثاً",

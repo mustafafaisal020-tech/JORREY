@@ -7,6 +7,7 @@ import CartDrawer from "@/components/CartDrawer";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
+import SaleCountdownTimer from "@/components/SaleCountdownTimer";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,14 @@ export default async function OnSalePage() {
     getSaleProducts(),
     getSettings(),
   ]);
+
+  const cd = settings.saleCountdown;
+  const showCountdown = cd?.enabled && cd.endsAt;
+
+  // Resolve the countdown label for the current locale
+  const countdownLabel = showCountdown
+    ? (isRTL ? (cd!.labelAr ?? t("countdown_label")) : (cd!.labelEn ?? t("countdown_label")))
+    : "";
 
   return (
     <CartProvider>
@@ -37,7 +46,22 @@ export default async function OnSalePage() {
             <h1 className="font-serif text-3xl md:text-5xl lg:text-6xl text-jorrey-black leading-tight">
               {t("title")}
             </h1>
-            <div className="w-12 h-px bg-red-600 mt-6" />
+
+            {showCountdown ? (
+              <SaleCountdownTimer
+                endsAt={cd!.endsAt}
+                label={countdownLabel}
+                onExpiry={cd!.onExpiry}
+                endedLabel={t("countdown_ended")}
+                days={t("countdown_days")}
+                hours={t("countdown_hours")}
+                minutes={t("countdown_minutes")}
+                seconds={t("countdown_seconds")}
+                isRTL={isRTL}
+              />
+            ) : (
+              <div className="w-12 h-px bg-red-600 mt-6" />
+            )}
           </div>
 
           {products.length === 0 ? (

@@ -53,6 +53,14 @@ export interface FooterSettings {
   contactItems?: FooterContactItem[];
 }
 
+export interface SaleCountdown {
+  enabled: boolean;
+  endsAt: string;           // UTC ISO string, e.g. "2026-07-01T15:00:00.000Z"
+  labelEn?: string;         // Custom heading EN — falls back to i18n default
+  labelAr?: string;         // Custom heading AR — falls back to i18n default
+  onExpiry: "hide" | "show_ended";
+}
+
 export interface SiteSettings {
   whatsappNumber: string;
   currency: string;
@@ -64,4 +72,5 @@ export interface SiteSettings {
   collectionsTitleAr?: string;
   collectionsDescription?: string;
   collectionsDescriptionAr?: string;
+  saleCountdown?: SaleCountdown;
 }

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { SiteSettings, SocialLink, FooterSettings, FooterCompanyItem, FooterCompanyChild, FooterContactItem } from "@/lib/settings-types";
+import type { SiteSettings, SocialLink, FooterSettings, FooterCompanyItem, FooterCompanyChild, FooterContactItem, SaleCountdown } from "@/lib/settings-types";
 import type { CustomPage } from "@/lib/pages-types";
 
 type MainFields = Omit<SiteSettings, "socialLinks" | "footer">;
@@ -40,6 +40,28 @@ export default function SettingsForm({
   const [collectionsTitleAr, setCollectionsTitleAr] = useState(settings.collectionsTitleAr ?? "");
   const [collectionsDescription, setCollectionsDescription] = useState(settings.collectionsDescription ?? "");
   const [collectionsDescriptionAr, setCollectionsDescriptionAr] = useState(settings.collectionsDescriptionAr ?? "");
+
+  // Sale countdown state
+  const defaultCountdown: SaleCountdown = { enabled: false, endsAt: "", onExpiry: "hide" };
+  const stored = settings.saleCountdown ?? defaultCountdown;
+  const [countdown, setCountdown] = useState<SaleCountdown>(stored);
+  // datetime-local value in local timezone (for the <input> only)
+  const [countdownLocalDt, setCountdownLocalDt] = useState<string>(() => {
+    if (!stored.endsAt) return "";
+    try {
+      // Convert UTC ISO → local datetime-local string "YYYY-MM-DDTHH:mm"
+      return new Date(stored.endsAt).toLocaleString("sv").slice(0, 16).replace(" ", "T");
+    } catch { return ""; }
+  });
+  function setCD(patch: Partial<SaleCountdown>) { setCountdown((p) => ({ ...p, ...patch })); }
+  function handleCountdownDtChange(val: string) {
+    setCountdownLocalDt(val);
+    if (val) {
+      setCD({ endsAt: new Date(val).toISOString() });
+    } else {
+      setCD({ endsAt: "" });
+    }
+  }
 
   const { register, handleSubmit, formState: { isSubmitting } } = useForm<MainFields>({
     defaultValues: {
@@ -78,6 +100,7 @@ export default function SettingsForm({
       collectionsTitleAr: collectionsTitleAr || undefined,
       collectionsDescription: collectionsDescription || undefined,
       collectionsDescriptionAr: collectionsDescriptionAr || undefined,
+      saleCountdown: countdown,
     };
     const res = await fetch("/api/settings", {
       method: "PUT",
@@ -325,6 +348,98 @@ export default function SettingsForm({
                 className="rounded-none"
               />
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Sale Countdown ──────────────────────────────────────────────── */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold text-jorrey-black">On Sale Page — Countdown Timer</h2>
+          <p className="text-xs text-gray-400 mt-1">
+            Displays a live countdown on the On Sale page. End time is stored in UTC and
+            the same countdown is shown to all visitors regardless of their timezone.
+          </p>
+        </div>
+        <Separator />
+
+        {/* Enable toggle */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-gray-700">Enable countdown</p>
+            <p className="text-xs text-gray-400 mt-0.5">When off the timer is hidden with no leftover space.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCD({ enabled: !countdown.enabled })}
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
+              countdown.enabled ? "bg-jorrey-black" : "bg-gray-200"
+            }`}
+            aria-pressed={countdown.enabled}
+          >
+            <span
+              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                countdown.enabled ? "translate-x-[18px]" : "translate-x-[3px]"
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* End date/time */}
+        <div className="space-y-2">
+          <Label className="text-xs tracking-widest uppercase text-gray-500">Sale End Date &amp; Time (your local time)</Label>
+          <input
+            type="datetime-local"
+            value={countdownLocalDt}
+            onChange={(e) => handleCountdownDtChange(e.target.value)}
+            className="w-full border border-gray-200 bg-white px-3 py-2 text-sm text-jorrey-black rounded-none focus:outline-none focus:border-jorrey-gold font-mono"
+          />
+          {countdown.endsAt && (
+            <p className="text-xs text-gray-400">
+              Stored as UTC: <span className="font-mono">{countdown.endsAt}</span>
+            </p>
+          )}
+        </div>
+
+        {/* Custom heading */}
+        <div className="space-y-2">
+          <Label className="text-xs tracking-widests uppercase text-gray-500">Timer Heading (EN / AR) — optional</Label>
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              value={countdown.labelEn ?? ""}
+              onChange={(e) => setCD({ labelEn: e.target.value || undefined })}
+              placeholder="Sale ends in"
+              className="rounded-none"
+            />
+            <Input
+              value={countdown.labelAr ?? ""}
+              onChange={(e) => setCD({ labelAr: e.target.value || undefined })}
+              placeholder="ينتهي العرض خلال"
+              dir="rtl"
+              className="rounded-none"
+            />
+          </div>
+          <p className="text-xs text-gray-400">Leave blank to use the default label.</p>
+        </div>
+
+        {/* On-expiry behaviour */}
+        <div className="space-y-2">
+          <Label className="text-xs tracking-widests uppercase text-gray-500">When the timer reaches zero</Label>
+          <div className="flex gap-2">
+            {(["hide", "show_ended"] as const).map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => setCD({ onExpiry: opt })}
+                className={`flex-1 py-2 px-3 text-xs tracking-widest uppercase border transition-colors ${
+                  countdown.onExpiry === opt
+                    ? "bg-jorrey-black text-white border-jorrey-black"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+                }`}
+              >
+                {opt === "hide" ? "Hide timer" : "Show 'Offer Ended'"}
+              </button>
+            ))}
           </div>
         </div>
       </div>

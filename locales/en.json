@@ -70,7 +70,13 @@
     "sale": {
         "eyebrow": "Limited Time",
         "title": "On Sale",
-        "empty": "No products on sale right now."
+        "empty": "No products on sale right now.",
+        "countdown_label": "Sale ends in",
+        "countdown_days": "Days",
+        "countdown_hours": "Hours",
+        "countdown_minutes": "Minutes",
+        "countdown_seconds": "Seconds",
+        "countdown_ended": "Offer Ended"
     },
     "new_arrival": {
         "eyebrow": "Just Arrived",
