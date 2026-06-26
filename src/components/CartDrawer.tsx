@@ -84,14 +84,10 @@ export default function CartDrawer({ whatsappNumber, currencySymbol }: CartDrawe
                 </div>
                 <Button
                   onClick={() => { setOpen(false); setCheckoutOpen(true); }}
-                  disabled={!whatsappNumber}
-                  className="w-full rounded-none bg-[#25D366] hover:bg-[#20b858] text-white text-xs tracking-widest uppercase font-semibold py-5"
+                  className="w-full rounded-none bg-jorrey-black hover:bg-jorrey-gold hover:text-jorrey-black text-white text-xs tracking-widest uppercase font-semibold py-5 transition-colors"
                 >
-                  {t("checkout")} via WhatsApp
+                  {t("submit_order")}
                 </Button>
-                {!whatsappNumber && (
-                  <p className="text-xs text-center text-gray-400">WhatsApp not configured</p>
-                )}
               </div>
             </>
           )}

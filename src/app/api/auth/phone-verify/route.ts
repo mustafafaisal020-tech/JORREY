@@ -27,6 +27,14 @@ async function storeVerifiedToken(token: string, phone: string): Promise<void> {
   }
 }
 
+function normaliseToE164(raw: string): string {
+  let s = raw.replace(/[\s\-().]/g, "");
+  if (s.startsWith("00")) s = "+" + s.slice(2);
+  if (!s.startsWith("+")) s = "+" + s;
+  if (/^\+0[7-9]\d{8,9}$/.test(s)) s = "+964" + s.slice(2);
+  return s;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { phone, code } = await req.json() as { phone: string; code: string };
@@ -34,7 +42,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing phone or code" }, { status: 400 });
     }
 
-    const normalised = phone.replace(/\s/g, "");
+    const normalised = normaliseToE164(phone);
     const result = await verifyOtp(normalised, code);
 
     if (result !== "ok") {

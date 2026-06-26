@@ -118,13 +118,13 @@ export default function ProductCard({
       ) : (
         <>
           {statusArr.includes("On Sale") && (
-            <Link href="/sale" onClick={(e) => e.stopPropagation()}
+            <Link href="/on-sale" onClick={(e) => e.stopPropagation()}
               className="bg-red-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 rounded-sm shadow-sm hover:bg-red-700 transition-colors">
               {tp("badge_sale")}
             </Link>
           )}
           {statusArr.includes("New Arrival") && (
-            <Link href="/new-arrival" onClick={(e) => e.stopPropagation()}
+            <Link href="/new-arrivals" onClick={(e) => e.stopPropagation()}
               className="bg-teal-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 rounded-sm shadow-sm hover:bg-teal-700 transition-colors">
               {tp("badge_new_arrival")}
             </Link>

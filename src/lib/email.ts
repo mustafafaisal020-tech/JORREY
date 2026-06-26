@@ -19,20 +19,22 @@ export async function sendEmail({ to, subject, html }: EmailPayload): Promise<vo
 }
 
 // WhatsApp via Meta Cloud API. Requires env vars:
-//   WHATSAPP_API_TOKEN       — permanent token from Meta Business
+//   WHATSAPP_API_TOKEN       — permanent access token from Meta Business
 //   WHATSAPP_PHONE_NUMBER_ID — sender phone number ID
-// If not configured, silently skips (no error thrown).
-export async function sendWhatsApp(to: string, text: string): Promise<void> {
+// Returns true if the API call succeeded, false otherwise (including when not configured).
+// NOTE: free-form messages are only delivered to users who have opted-in / initiated contact.
+// For OTP codes you need an approved authentication template on the Meta side.
+export async function sendWhatsApp(to: string, text: string): Promise<boolean> {
   const token = process.env.WHATSAPP_API_TOKEN;
   const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  if (!token || !phoneId || !to) return;
+  if (!token || !phoneId || !to) return false;
 
-  // Normalise: strip non-digits and ensure leading +
-  const normalised = to.replace(/\D/g, "");
-  if (!normalised) return;
+  // Strip everything except digits (Meta API wants digits only, no +)
+  const digits = to.replace(/\D/g, "");
+  if (!digits) return false;
 
   try {
-    await fetch(
+    const res = await fetch(
       `https://graph.facebook.com/v19.0/${phoneId}/messages`,
       {
         method: "POST",
@@ -42,14 +44,21 @@ export async function sendWhatsApp(to: string, text: string): Promise<void> {
         },
         body: JSON.stringify({
           messaging_product: "whatsapp",
-          to: normalised,
+          to: digits,
           type: "text",
           text: { body: text },
         }),
       }
     );
-  } catch {
-    // fail silently
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "(no body)");
+      console.error(`[WhatsApp] Meta API error ${res.status}: ${errBody.slice(0, 300)}`);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error("[WhatsApp] Network error:", e);
+    return false;
   }
 }
 

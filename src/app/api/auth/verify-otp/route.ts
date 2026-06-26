@@ -11,7 +11,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing phone or code" }, { status: 400 });
     }
 
-    const normalised = phone.replace(/\s/g, "");
+    let normalised = phone.replace(/[\s\-().]/g, "");
+    if (normalised.startsWith("00")) normalised = "+" + normalised.slice(2);
+    if (!normalised.startsWith("+")) normalised = "+" + normalised;
+    if (/^\+0[7-9]\d{8,9}$/.test(normalised)) normalised = "+964" + normalised.slice(2);
     const result = await verifyOtp(normalised, code);
 
     if (result === "ok") {

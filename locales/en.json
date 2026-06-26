@@ -122,6 +122,7 @@
         "total": "Total",
         "checkout": "Checkout",
         "buy_now": "Buy Now",
+        "submit_order": "Submit Order",
         "select_size": "Select Size",
         "add_to_bag": "Add to Bag"
     },
