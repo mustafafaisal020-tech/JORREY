@@ -9,7 +9,7 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { useCart } from "./CartProvider";
 import CheckoutModal from "./CheckoutModal";
 import type { Product } from "@/lib/product-types";
-import { categoryHasSizes } from "@/lib/product-types";
+import { categoryHasSizes, PRODUCT_COLORS } from "@/lib/product-types";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -213,19 +213,45 @@ export default function ProductModal({
                     </p>
                   )}
 
-                  {/* Color + SKU */}
-                  <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-xs border-t border-gray-100 pt-4">
-                    {product.color &&
-                      product.color !== "NA" &&
-                      product.color !== "N/A" && (
-                        <span className="text-gray-600">
-                          <span className="text-[10px] tracking-[0.2em] uppercase text-gray-400 me-1.5">
-                            {tp("color")}
-                          </span>
-                          {product.color}
-                        </span>
-                      )}
-                    <span className="text-gray-600">
+                  {/* Colors + SKU */}
+                  <div className="border-t border-gray-100 pt-4 space-y-3">
+                    {/* Available Colors swatches */}
+                    {(() => {
+                      const cols = product.colors?.length
+                        ? product.colors
+                        : product.color && product.color !== "N/A" && product.color !== "NA"
+                        ? [product.color]
+                        : [];
+                      if (cols.length === 0) return null;
+                      return (
+                        <div>
+                          <p className="text-[10px] tracking-[0.2em] uppercase text-gray-400 mb-2">
+                            {tp("available_colors")}
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {cols.map((name) => {
+                              const c = PRODUCT_COLORS.find((x) => x.name === name);
+                              return (
+                                <span
+                                  key={name}
+                                  title={name}
+                                  className="flex items-center gap-1.5 text-xs text-gray-600"
+                                >
+                                  {c && (
+                                    <span
+                                      className="w-4 h-4 rounded-full border border-gray-200 flex-shrink-0 shadow-sm"
+                                      style={{ backgroundColor: c.hex }}
+                                    />
+                                  )}
+                                  {name}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    <span className="text-xs text-gray-600">
                       <span className="text-[10px] tracking-[0.2em] uppercase text-gray-400 me-1.5">
                         {tp("sku")}
                       </span>

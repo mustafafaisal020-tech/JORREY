@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { SiteSettings, SocialLink, FooterSettings, FooterCompanyItem, FooterCompanyChild } from "@/lib/settings-types";
+import type { SiteSettings, SocialLink, FooterSettings, FooterCompanyItem, FooterCompanyChild, FooterContactItem } from "@/lib/settings-types";
 import type { CustomPage } from "@/lib/pages-types";
 
 type MainFields = Omit<SiteSettings, "socialLinks" | "footer">;
@@ -196,6 +196,37 @@ export default function SettingsForm({
     updateCompanyItem(parentId, { children });
   }
 
+  // ── Contact items helpers ─────────────────────────────────────────────────
+  function contactItems(): FooterContactItem[] {
+    return [...(footer.contactItems ?? [])].sort((a, b) => a.order - b.order);
+  }
+
+  function addContactItem() {
+    const item: FooterContactItem = {
+      id: newId(), label: "", labelAr: "", value: "", valueAr: "", url: "",
+      visible: true, order: (footer.contactItems ?? []).length,
+    };
+    setF({ contactItems: [...(footer.contactItems ?? []), item] });
+  }
+
+  function updateContactItem(id: string, patch: Partial<Omit<FooterContactItem, "id">>) {
+    setF({ contactItems: (footer.contactItems ?? []).map((x) => x.id === id ? { ...x, ...patch } : x) });
+  }
+
+  function removeContactItem(id: string) {
+    setF({ contactItems: (footer.contactItems ?? []).filter((x) => x.id !== id) });
+  }
+
+  function moveContactItem(id: string, dir: -1 | 1) {
+    const items = contactItems();
+    const idx = items.findIndex((x) => x.id === id);
+    const swapIdx = idx + dir;
+    if (swapIdx < 0 || swapIdx >= items.length) return;
+    [items[idx], items[swapIdx]] = [items[swapIdx], items[idx]];
+    items.forEach((x, i) => { x.order = i; });
+    setF({ contactItems: items });
+  }
+
   const activeBg = footer.bgColor ?? "black";
 
   return (
@@ -356,6 +387,7 @@ export default function SettingsForm({
             { enKey: "shopLabel" as const, arKey: "shopLabelAr" as const, def: "Shop" },
             { enKey: "companyLabel" as const, arKey: "companyLabelAr" as const, def: "Company" },
             { enKey: "connectLabel" as const, arKey: "connectLabelAr" as const, def: "Connect" },
+            { enKey: "contactLabel" as const, arKey: "contactLabelAr" as const, def: "Contact Us" },
           ].map(({ enKey, arKey, def }) => (
             <div key={enKey} className="grid grid-cols-[72px_1fr_1fr] gap-2 items-center">
               <span className="text-xs text-gray-400 font-medium">{def}</span>
@@ -427,6 +459,81 @@ export default function SettingsForm({
             className="rounded-none text-xs tracking-widest uppercase border-dashed">
             <Plus size={13} className="me-1" />
             Add Social Link
+          </Button>
+        </div>
+      </div>
+
+      {/* ── Footer — Contact Us items ──────────────────────────────────── */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold text-jorrey-black">Footer — Contact Us Section</h2>
+          <p className="text-xs text-gray-400 mt-1">
+            Shown as a &ldquo;Contact Us&rdquo; column in the footer (after the social links).
+            Each item has a label (e.g. &ldquo;Email&rdquo;) and a value (e.g. &ldquo;hello@jorrey.com&rdquo;).
+            Add an optional URL to make it clickable.
+          </p>
+        </div>
+        <Separator />
+        <div className="space-y-2">
+          {contactItems().map((item, i) => (
+            <div key={item.id} className={`border bg-white border-gray-100 space-y-2 p-3 ${!item.visible ? "opacity-60" : ""}`}>
+              {/* Row: order + visibility + delete */}
+              <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-0.5">
+                  <button type="button" onClick={() => moveContactItem(item.id, -1)} disabled={i === 0}
+                    className="text-gray-300 hover:text-gray-600 disabled:opacity-20"><ChevronUp size={12} /></button>
+                  <button type="button" onClick={() => moveContactItem(item.id, 1)} disabled={i === contactItems().length - 1}
+                    className="text-gray-300 hover:text-gray-600 disabled:opacity-20"><ChevronDown size={12} /></button>
+                </div>
+                <button type="button" onClick={() => updateContactItem(item.id, { visible: !item.visible })}
+                  className={`flex-shrink-0 transition-colors ${item.visible ? "text-jorrey-gold hover:text-gray-400" : "text-gray-300 hover:text-gray-600"}`}>
+                  {item.visible ? <Eye size={14} /> : <EyeOff size={14} />}
+                </button>
+                <div className="flex-1 grid grid-cols-2 gap-2">
+                  <Input
+                    value={item.label}
+                    onChange={(e) => updateContactItem(item.id, { label: e.target.value })}
+                    placeholder="Label (EN) — e.g. Email"
+                    className="rounded-none h-8 text-xs"
+                  />
+                  <Input
+                    value={item.labelAr ?? ""}
+                    onChange={(e) => updateContactItem(item.id, { labelAr: e.target.value })}
+                    placeholder="التسمية (AR)"
+                    dir="rtl"
+                    className="rounded-none h-8 text-xs"
+                  />
+                </div>
+                <button type="button" onClick={() => removeContactItem(item.id)}
+                  className="flex-shrink-0 text-gray-300 hover:text-red-500 transition-colors"><Trash2 size={13} /></button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  value={item.value}
+                  onChange={(e) => updateContactItem(item.id, { value: e.target.value })}
+                  placeholder="Value (EN) — e.g. hello@jorrey.com"
+                  className="rounded-none h-8 text-xs"
+                />
+                <Input
+                  value={item.valueAr ?? ""}
+                  onChange={(e) => updateContactItem(item.id, { valueAr: e.target.value })}
+                  placeholder="القيمة (AR)"
+                  dir="rtl"
+                  className="rounded-none h-8 text-xs"
+                />
+              </div>
+              <Input
+                value={item.url ?? ""}
+                onChange={(e) => updateContactItem(item.id, { url: e.target.value || undefined })}
+                placeholder="URL (optional) — makes it a clickable link"
+                className="rounded-none h-8 text-xs font-mono"
+              />
+            </div>
+          ))}
+          <Button type="button" variant="outline" onClick={addContactItem}
+            className="rounded-none text-xs tracking-widest uppercase border-dashed">
+            <Plus size={13} className="me-1" />
+            Add Contact Item
           </Button>
         </div>
       </div>

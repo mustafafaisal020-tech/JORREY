@@ -4,6 +4,8 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import UserListsProvider from "@/components/UserListsProvider";
+import PWAInstallBanner from "@/components/PWAInstallBanner";
+import PushSubscriptionSetup from "@/components/PushSubscriptionSetup";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -32,11 +34,21 @@ const cairo = Cairo({
 export const metadata: Metadata = {
   title: "Jorrey — Elegance Designed for You",
   description: "Curated luxury fashion pieces crafted for the discerning few.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Jorrey",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  themeColor: "#0C0C0C",
 };
 
 export default async function RootLayout({
@@ -55,11 +67,22 @@ export default async function RootLayout({
         dir={isRTL ? "rtl" : "ltr"}
         className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} ${cairo.variable} h-full antialiased`}
       >
+        <head>
+          <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+          <script dangerouslySetInnerHTML={{ __html:
+            `if('serviceWorker' in navigator){` +
+            `window.addEventListener('load',()=>{` +
+            `navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{});` +
+            `});}`
+          }} />
+        </head>
         <body className="min-h-full flex flex-col">
           <NextIntlClientProvider locale={locale} messages={messages}>
             <UserListsProvider>
               {children}
             </UserListsProvider>
+            <PWAInstallBanner />
+            <PushSubscriptionSetup />
           </NextIntlClientProvider>
         </body>
       </html>

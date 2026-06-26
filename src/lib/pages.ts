@@ -147,6 +147,39 @@ export async function updateSection(
   return true;
 }
 
+export async function getLegalPages(includeHidden = false): Promise<CustomPage[]> {
+  const pages = (await read()).custom.filter((p) => p.pageGroup === "legal");
+  const filtered = includeHidden ? pages : pages.filter((p) => p.visible);
+  return filtered.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+}
+
+export async function seedLegalPages(): Promise<void> {
+  const data = await read();
+  const existingSlugs = new Set(data.custom.filter((p) => p.pageGroup === "legal").map((p) => p.slug));
+  const defaults = [
+    { slug: "privacy-policy",   title: "Privacy Policy",      titleAr: "سياسة الخصوصية" },
+    { slug: "terms-of-service", title: "Terms of Service",    titleAr: "شروط الخدمة" },
+    { slug: "shipping-return",  title: "Shipping & Returns",  titleAr: "الشحن والإرجاع" },
+  ];
+  let changed = false;
+  defaults.forEach((def, i) => {
+    if (!existingSlugs.has(def.slug)) {
+      data.custom.push({
+        ...def,
+        id: randomUUID(),
+        pageGroup: "legal",
+        sections: [],
+        visible: true,
+        order: 9000 + i,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      changed = true;
+    }
+  });
+  if (changed) await write(data);
+}
+
 export async function deleteSection(pageId: string, sectionId: string): Promise<boolean> {
   const data = await read();
   const page = data.custom.find((p) => p.id === pageId);

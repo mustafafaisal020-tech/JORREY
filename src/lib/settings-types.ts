@@ -26,6 +26,17 @@ export interface FooterCompanyItem {
   children: FooterCompanyChild[];
 }
 
+export interface FooterContactItem {
+  id: string;
+  label: string;
+  labelAr?: string;
+  value: string;
+  valueAr?: string;
+  url?: string;
+  visible: boolean;
+  order: number;
+}
+
 export interface FooterSettings {
   tagline?: string;
   taglineAr?: string;
@@ -35,8 +46,11 @@ export interface FooterSettings {
   companyLabelAr?: string;
   connectLabel?: string;
   connectLabelAr?: string;
+  contactLabel?: string;
+  contactLabelAr?: string;
   bgColor?: "black" | "white" | "beige";
   companyItems?: FooterCompanyItem[];
+  contactItems?: FooterContactItem[];
 }
 
 export interface SiteSettings {

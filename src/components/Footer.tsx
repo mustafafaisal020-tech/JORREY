@@ -2,9 +2,9 @@ import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getCategories } from "@/lib/categories";
 import { getSettings } from "@/lib/settings";
+import { getLegalPages } from "@/lib/pages";
+import PWAInstallLink from "@/components/PWAInstallLink";
 
-// Detect social platform from URL and return an inline SVG path.
-// Returns null for unknown platforms (falls back to text label).
 function getSocialIcon(url: string): React.ReactNode | null {
   const lower = url.toLowerCase();
 
@@ -70,9 +70,17 @@ export default async function Footer() {
   const locale = await getLocale();
   const isRTL = locale === "ar";
 
-  const [categories, settings] = await Promise.all([getCategories(false), getSettings()]);
+  const [categories, settings, legalPages] = await Promise.all([
+    getCategories(false),
+    getSettings(),
+    getLegalPages(false), // only visible ones
+  ]);
+
   const socialLinks = (settings.socialLinks ?? []).filter((l) => !l.hidden);
   const footer = settings.footer ?? {};
+  const contactItems = (footer.contactItems ?? [])
+    .filter((x) => x.visible)
+    .sort((a, b) => a.order - b.order);
 
   const isDark = !footer.bgColor || footer.bgColor === "black";
   const rootBg = footer.bgColor === "beige" ? "bg-jorrey-beige" : footer.bgColor === "white" ? "bg-white" : "bg-jorrey-black";
@@ -81,9 +89,6 @@ export default async function Footer() {
   const linkClass = isDark
     ? "text-jorrey-white/50 hover:text-jorrey-gold text-sm transition-colors duration-200"
     : "text-jorrey-black/60 hover:text-jorrey-gold text-sm transition-colors duration-200";
-  const iconLinkClass = isDark
-    ? "flex items-center gap-2.5 text-jorrey-white/50 hover:text-jorrey-gold transition-colors duration-200 group"
-    : "flex items-center gap-2.5 text-jorrey-black/60 hover:text-jorrey-gold transition-colors duration-200 group";
   const borderColor = isDark ? "border-jorrey-white/10" : "border-jorrey-black/10";
   const copyrightText = isDark ? "text-jorrey-white/20" : "text-jorrey-black/30";
   const copyrightLinkClass = isDark
@@ -93,23 +98,25 @@ export default async function Footer() {
   const shopLabel = (isRTL ? footer.shopLabelAr : footer.shopLabel) || t("shop");
   const companyLabel = (isRTL ? footer.companyLabelAr : footer.companyLabel) || t("company");
   const connectLabel = (isRTL ? footer.connectLabelAr : footer.connectLabel) || t("connect");
+  const contactLabel = (isRTL ? footer.contactLabelAr : footer.contactLabel) || t("contact_us");
   const tagline = (isRTL ? footer.taglineAr : footer.tagline) || t("tagline");
 
   return (
     <footer id="contact" className={`${rootBg} ${brandText}`}>
       <div className="max-w-7xl mx-auto px-6 lg:px-10 pt-12 md:pt-20 pb-8 md:pb-10">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-12 mb-10 md:mb-16">
+        <div className="flex flex-col min-[375px]:flex-row flex-wrap gap-10 md:gap-14 mb-10 md:mb-16">
+
           {/* Brand */}
-          <div className="md:col-span-1">
-            <Link href="/" className={`font-serif text-2xl tracking-[0.15em] ${brandText} mb-6 block`}>
+          <div className="shrink-0 min-[375px]:w-44 md:w-52">
+            <Link href="/" className={`font-serif text-2xl tracking-[0.15em] ${brandText} mb-5 block`}>
               JORREY
             </Link>
-            <p className={`${taglineText} text-sm leading-relaxed max-w-xs`}>{tagline}</p>
+            <p className={`${taglineText} text-sm leading-relaxed`}>{tagline}</p>
           </div>
 
           {/* Shop — DB categories */}
-          <div>
-            <p className="text-jorrey-gold text-[10px] tracking-[0.3em] uppercase mb-6">{shopLabel}</p>
+          <div className="flex-1 min-w-[120px]">
+            <p className="text-jorrey-gold text-[10px] tracking-[0.3em] uppercase mb-5">{shopLabel}</p>
             <ul className="space-y-3">
               {categories.length > 0 ? (
                 categories.map((cat) => {
@@ -131,81 +138,115 @@ export default async function Footer() {
           </div>
 
           {/* Company — editable items from settings */}
-          <div>
-            <p className="text-jorrey-gold text-[10px] tracking-[0.3em] uppercase mb-6">{companyLabel}</p>
-            <ul className="space-y-3">
-              {(footer.companyItems ?? [])
-                .filter((x) => x.visible)
-                .sort((a, b) => a.order - b.order)
-                .map((item) => {
+          {(footer.companyItems ?? []).some((x) => x.visible) && (
+            <div className="flex-1 min-w-[120px]">
+              <p className="text-jorrey-gold text-[10px] tracking-[0.3em] uppercase mb-5">{companyLabel}</p>
+              <ul className="space-y-3">
+                {(footer.companyItems ?? [])
+                  .filter((x) => x.visible)
+                  .sort((a, b) => a.order - b.order)
+                  .map((item) => {
+                    const label = isRTL && item.labelAr ? item.labelAr : item.label;
+                    const children = (item.children ?? [])
+                      .filter((c) => c.visible)
+                      .sort((a, b) => a.order - b.order);
+                    return (
+                      <li key={item.id}>
+                        <a href={item.url} className={linkClass}>{label}</a>
+                        {children.length > 0 && (
+                          <ul className={`mt-2 space-y-2 ${isRTL ? "pe-3 border-e" : "ps-3 border-s"} ${isDark ? "border-jorrey-white/10" : "border-jorrey-black/10"}`}>
+                            {children.map((child) => {
+                              const childLabel = isRTL && child.labelAr ? child.labelAr : child.label;
+                              return (
+                                <li key={child.id}>
+                                  <a href={child.url} className={`${linkClass} text-xs opacity-80`}>{childLabel}</a>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </li>
+                    );
+                  })}
+              </ul>
+            </div>
+          )}
+
+          {/* Connect — SVG icons */}
+          <div className="shrink-0">
+            <p className="text-jorrey-gold text-[10px] tracking-[0.3em] uppercase mb-5">{connectLabel}</p>
+            <div className="flex flex-row flex-wrap gap-4">
+              {socialLinks.map((link) => {
+                const icon = getSocialIcon(link.url);
+                if (!icon) return null;
+                return (
+                  <a
+                    key={link.id}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={link.label}
+                    className={isDark
+                      ? "text-jorrey-white/45 hover:text-jorrey-gold transition-colors duration-200"
+                      : "text-jorrey-black/50 hover:text-jorrey-gold transition-colors duration-200"}
+                  >
+                    {icon}
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Contact Us — admin-editable items */}
+          {contactItems.length > 0 && (
+            <div className="shrink-0 min-w-[140px]">
+              <p className="text-jorrey-gold text-[10px] tracking-[0.3em] uppercase mb-5">{contactLabel}</p>
+              <ul className="space-y-4">
+                {contactItems.map((item) => {
                   const label = isRTL && item.labelAr ? item.labelAr : item.label;
-                  const children = (item.children ?? [])
-                    .filter((c) => c.visible)
-                    .sort((a, b) => a.order - b.order);
+                  const value = isRTL && item.valueAr ? item.valueAr : item.value;
                   return (
                     <li key={item.id}>
-                      <a href={item.url} className={linkClass}>{label}</a>
-                      {children.length > 0 && (
-                        <ul className={`mt-2 space-y-2 ${isRTL ? "pe-3 border-e" : "ps-3 border-s"} ${isDark ? "border-jorrey-white/10" : "border-jorrey-black/10"}`}>
-                          {children.map((child) => {
-                            const childLabel = isRTL && child.labelAr ? child.labelAr : child.label;
-                            return (
-                              <li key={child.id}>
-                                <a href={child.url} className={`${linkClass} text-xs opacity-80`}>
-                                  {childLabel}
-                                </a>
-                              </li>
-                            );
-                          })}
-                        </ul>
+                      {label && (
+                        <p className={`text-[9px] tracking-[0.2em] uppercase mb-1 ${isDark ? "text-jorrey-white/30" : "text-jorrey-black/40"}`}>
+                          {label}
+                        </p>
+                      )}
+                      {item.url ? (
+                        <a href={item.url} className={linkClass}>{value}</a>
+                      ) : (
+                        <p className={`${isDark ? "text-jorrey-white/50" : "text-jorrey-black/60"} text-sm`}>{value}</p>
                       )}
                     </li>
                   );
                 })}
-            </ul>
-          </div>
-
-          {/* Connect — social links with icons */}
-          <div>
-            <p className="text-jorrey-gold text-[10px] tracking-[0.3em] uppercase mb-6">{connectLabel}</p>
-            <ul className="space-y-4">
-              {socialLinks.length > 0 ? (
-                socialLinks.map((link) => {
-                  const icon = getSocialIcon(link.url);
-                  return (
-                    <li key={link.id}>
-                      <a
-                        href={link.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={link.label}
-                        className={icon ? iconLinkClass : linkClass}
-                      >
-                        {icon}
-                        <span className="text-sm">{link.label}</span>
-                      </a>
-                    </li>
-                  );
-                })
-              ) : (
-                [t("contact"), t("instagram"), t("pinterest"), t("press")].map((l) => (
-                  <li key={l}>
-                    <a href="#" className={linkClass}>{l}</a>
-                  </li>
-                ))
-              )}
-            </ul>
-          </div>
+              </ul>
+            </div>
+          )}
         </div>
 
         <div className={`border-t ${borderColor} pt-8 flex flex-col md:flex-row items-center justify-between gap-4`}>
-          <p className={`${copyrightText} text-xs tracking-wide`}>
-            © {new Date().getFullYear()} Jorrey. {t("copyright")}
-          </p>
+          <div className="flex items-center gap-6">
+            <p className={`${copyrightText} text-xs tracking-wide`}>
+              © {new Date().getFullYear()} Jorrey. {t("copyright")}
+            </p>
+            <span className={copyrightText}>
+              <PWAInstallLink isRTL={isRTL} />
+            </span>
+          </div>
           <div className="flex gap-8">
-            {[t("privacy"), t("terms"), t("shipping")].map((l) => (
-              <a key={l} href="#" className={copyrightLinkClass}>{l}</a>
-            ))}
+            {legalPages.length > 0
+              ? legalPages.map((page) => {
+                  const label = isRTL && page.titleAr ? page.titleAr : page.title;
+                  return (
+                    <Link key={page.id} href={`/${page.slug}`} className={copyrightLinkClass}>
+                      {label}
+                    </Link>
+                  );
+                })
+              : [t("privacy"), t("terms"), t("shipping")].map((l) => (
+                  <span key={l} className={copyrightText + " text-xs"}>{l}</span>
+                ))}
           </div>
         </div>
       </div>

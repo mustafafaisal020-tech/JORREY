@@ -32,6 +32,16 @@ function normalize(raw: Record<string, unknown>): Product {
   // Migrate old bottleSizeMl → ml
   const ml = (raw.ml as number | undefined) ?? (raw.bottleSizeMl as number | undefined);
 
+  // Migrate single color → colors array
+  const rawColors = raw.colors as string[] | undefined;
+  const rawColor = raw.color as string | undefined;
+  const colors: string[] =
+    Array.isArray(rawColors) && rawColors.length > 0
+      ? rawColors
+      : rawColor && rawColor !== "N/A" && rawColor !== "NA"
+      ? [rawColor]
+      : [];
+
   return {
     summary: "",
     inStock: true,
@@ -41,6 +51,8 @@ function normalize(raw: Record<string, unknown>): Product {
     sizes: Array.isArray(raw.sizes) ? (raw.sizes as string[]) : [],
     status: status as Product["status"],
     ml,
+    colors,
+    color: colors[0] ?? rawColor ?? "",
   } as Product;
 }
 

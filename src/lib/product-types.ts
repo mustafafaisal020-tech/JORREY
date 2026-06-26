@@ -19,6 +19,7 @@ export interface Product {
   price: number;
   category: string;
   color: string;
+  colors?: string[];
   sizes: string[];
   sku: string;
   image: string;
@@ -29,6 +30,7 @@ export interface Product {
   ml?: number;
   pattern?: string;
   productType?: string;
+  shippingCost?: number;
   inStock?: boolean;
   archived?: boolean;
   archivedAt?: string;

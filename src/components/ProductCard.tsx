@@ -1,15 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
-import Image from "next/image";
 import Link from "next/link";
-import { ShoppingBag, Zap, Heart, Bell } from "lucide-react";
+import { Heart, Bell } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { useUser } from "@clerk/nextjs";
+import { ShirtParallaxCard } from "@/components/ui/ShirtParallaxCard";
 import ProductModal from "./ProductModal";
 import type { Product } from "@/lib/product-types";
-import { categoryHasSizes, isLiquidCat } from "@/lib/product-types";
+import { categoryHasSizes, isLiquidCat, PRODUCT_COLORS } from "@/lib/product-types";
 import { useCart } from "./CartProvider";
 import { useUserLists } from "./UserListsProvider";
 
@@ -26,7 +25,6 @@ export default function ProductCard({
   whatsappNumber = "",
   currencySymbol = "$",
 }: ProductCardProps) {
-  const t = useTranslations("cart");
   const tp = useTranslations("product");
   const locale = useLocale();
   const isRTL = locale === "ar";
@@ -34,7 +32,6 @@ export default function ProductCard({
   const { user } = useUser();
   const { isFavorite, isWatched, toggleFavorite, toggleWatchlist } = useUserLists();
   const [modalOpen, setModalOpen] = useState(false);
-  const [hoverImg, setHoverImg] = useState<string | null>(null);
 
   const images =
     product.images?.length > 0
@@ -49,13 +46,53 @@ export default function ProductCard({
   const effectivePrice = hasOnSale && product.salePrice ? product.salePrice : product.price;
   const isOutOfStock = product.inStock === false;
 
-  function quickAddToCart(e: React.MouseEvent) {
-    e.stopPropagation();
+  const priceDisplay = hasOnSale && product.salePrice
+    ? `${currencySymbol}${product.salePrice.toLocaleString()}`
+    : `${currencySymbol}${product.price.toLocaleString()}`;
+
+  const descriptionText = isRTL && product.summaryAr
+    ? product.summaryAr
+    : product.summary
+    || (isLiquidCat(product.category) && product.ml ? `${product.ml} ML` : "")
+    || product.description
+    || "";
+
+  // Color swatches
+  const productColors = product.colors?.length ? product.colors : (product.color && product.color !== "N/A" ? [product.color] : []);
+  const colorsDisplay = productColors.length > 1 ? (
+    <div className="flex items-center gap-1 pt-0.5">
+      <span className="text-[9px] uppercase tracking-widest text-gray-400 me-1">{tp("available_colors")}</span>
+      {productColors.slice(0, 6).map((name) => {
+        const c = PRODUCT_COLORS.find((x) => x.name === name);
+        return c ? (
+          <span
+            key={name}
+            title={name}
+            className="w-3 h-3 rounded-full border border-gray-200 flex-shrink-0"
+            style={{ backgroundColor: c.hex }}
+          />
+        ) : null;
+      })}
+      {productColors.length > 6 && (
+        <span className="text-[9px] text-gray-400">+{productColors.length - 6}</span>
+      )}
+    </div>
+  ) : null;
+
+  // Shipping display — show "Free Shipping" when cost is 0 or not set
+  const shippingLabel =
+    !product.shippingCost || product.shippingCost === 0
+      ? tp("free_shipping")
+      : `${tp("shipping_label")}: ${currencySymbol}${product.shippingCost.toLocaleString()}`;
+
+  function handleBuyNow() {
     if (isOutOfStock) return;
-    if (hasSizes) {
-      setModalOpen(true);
-      return;
-    }
+    setModalOpen(true);
+  }
+
+  function handleAddToCart() {
+    if (isOutOfStock) return;
+    if (hasSizes) { setModalOpen(true); return; }
     addItem({
       productId: product.id,
       name: product.name,
@@ -69,213 +106,95 @@ export default function ProductCard({
     });
   }
 
-  function quickBuyNow(e: React.MouseEvent) {
-    e.stopPropagation();
-    if (isOutOfStock) return;
-    setModalOpen(true);
-  }
+  void handleAddToCart; // available for future use
 
-  function handleToggleFavorite(e: React.MouseEvent) {
-    e.stopPropagation();
-    toggleFavorite(product.id, product.name);
-  }
+  // ── Badges — bilingual text, rendered inside card at upper-start corner ──
+  const badges = (
+    <>
+      {isOutOfStock ? (
+        <span className="bg-red-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 rounded-sm shadow-sm">
+          {tp("badge_out_of_stock")}
+        </span>
+      ) : (
+        <>
+          {statusArr.includes("On Sale") && (
+            <Link href="/sale" onClick={(e) => e.stopPropagation()}
+              className="bg-red-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 rounded-sm shadow-sm hover:bg-red-700 transition-colors">
+              {tp("badge_sale")}
+            </Link>
+          )}
+          {statusArr.includes("New Arrival") && (
+            <Link href="/new-arrival" onClick={(e) => e.stopPropagation()}
+              className="bg-teal-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 rounded-sm shadow-sm hover:bg-teal-700 transition-colors">
+              {tp("badge_new_arrival")}
+            </Link>
+          )}
+          {statusArr.includes("Featured") && (
+            <Link href="/featured" onClick={(e) => e.stopPropagation()}
+              className="bg-jorrey-black text-jorrey-gold text-[9px] font-bold tracking-widest uppercase px-2 py-1 rounded-sm shadow-sm hover:bg-jorrey-gold hover:text-jorrey-black transition-colors">
+              {tp("badge_featured")}
+            </Link>
+          )}
+          {statusArr.includes("Clearance") && (
+            <Link href="/clearance" onClick={(e) => e.stopPropagation()}
+              className="bg-orange-500 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 rounded-sm shadow-sm hover:bg-orange-600 transition-colors">
+              {tp("badge_clearance")}
+            </Link>
+          )}
+          {statusArr.includes("Limited Edition") && (
+            <Link href="/limited-edition" onClick={(e) => e.stopPropagation()}
+              className="bg-jorrey-gold text-jorrey-black text-[9px] font-bold tracking-widest uppercase px-2 py-1 rounded-sm shadow-sm hover:bg-jorrey-gold-dark transition-colors">
+              {tp("badge_limited")}
+            </Link>
+          )}
+        </>
+      )}
+    </>
+  );
 
-  function handleToggleWatchlist(e: React.MouseEvent) {
-    e.stopPropagation();
-    toggleWatchlist(product.id, product.name, effectivePrice);
-  }
+  // ── Icons rendered below the product image ────────────────────────────────
+  const actions = user ? (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={(e) => { e.stopPropagation(); toggleFavorite(product.id, product.name); }}
+        aria-label={isFavorite(product.id) ? "Remove from favorites" : "Add to favorites"}
+        className={`w-8 h-8 rounded-full bg-jorrey-beige flex items-center justify-center hover:bg-jorrey-beige-dark transition-colors ${
+          isFavorite(product.id) ? "text-red-500" : "text-jorrey-black/40 hover:text-red-400"
+        }`}
+      >
+        <Heart size={14} fill={isFavorite(product.id) ? "currentColor" : "none"} strokeWidth={isFavorite(product.id) ? 0 : 2} />
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); toggleWatchlist(product.id, product.name, effectivePrice); }}
+        aria-label={isWatched(product.id) ? "Remove from watchlist" : "Add to watchlist"}
+        className={`w-8 h-8 rounded-full bg-jorrey-beige flex items-center justify-center hover:bg-jorrey-beige-dark transition-colors ${
+          isWatched(product.id) ? "text-jorrey-gold" : "text-jorrey-black/40 hover:text-jorrey-gold"
+        } ${isOutOfStock ? "ring-2 ring-jorrey-gold/40" : ""}`}
+      >
+        <Bell size={14} fill={isWatched(product.id) ? "currentColor" : "none"} strokeWidth={isWatched(product.id) ? 0 : 2} />
+      </button>
+      {isOutOfStock && (
+        <span className="text-[10px] text-jorrey-black/40 ms-1">Notify me</span>
+      )}
+    </div>
+  ) : null;
 
   return (
     <>
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.6 }}
-        className="group cursor-pointer"
-        onClick={() => setModalOpen(true)}
-      >
-        {/* Image */}
-        <div
-          className="relative overflow-hidden mb-4"
-          style={{ aspectRatio: "3/4" }}
-          onMouseEnter={() => images[1] && setHoverImg(images[1])}
-          onMouseLeave={() => setHoverImg(null)}
-        >
-          {images[0] ? (
-            <Image
-              src={hoverImg ?? images[0]}
-              alt={product.name}
-              fill
-              sizes="(max-width: 768px) 50vw, 25vw"
-              className={`object-cover transition-all duration-500 group-hover:scale-105 ${isOutOfStock ? "grayscale-[30%]" : ""}`}
-            />
-          ) : (
-            <div className="w-full h-full transition-transform duration-700 group-hover:scale-105 bg-jorrey-beige" />
-          )}
-
-          {/* OOS dimming overlay */}
-          {isOutOfStock && (
-            <div className="absolute inset-0 z-10 bg-white/30 pointer-events-none" />
-          )}
-
-          {/* Status badges — top-start */}
-          <div className="absolute top-2 start-2 z-20 flex flex-col gap-1">
-            {isOutOfStock ? (
-              <span className="bg-red-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1">
-                OUT OF STOCK
-              </span>
-            ) : (
-              <>
-                {statusArr.includes("On Sale") && (
-                  <Link
-                    href="/sale"
-                    onClick={(e) => e.stopPropagation()}
-                    className="bg-red-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-red-700 transition-colors"
-                  >
-                    SALE
-                  </Link>
-                )}
-                {statusArr.includes("Featured") && (
-                  <Link
-                    href="/featured"
-                    onClick={(e) => e.stopPropagation()}
-                    className="bg-jorrey-black text-jorrey-gold text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-jorrey-gold hover:text-jorrey-black transition-colors"
-                  >
-                    FEATURED
-                  </Link>
-                )}
-                {statusArr.includes("New Arrival") && (
-                  <Link
-                    href="/new-arrival"
-                    onClick={(e) => e.stopPropagation()}
-                    className="bg-teal-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-teal-700 transition-colors"
-                  >
-                    NEW ARRIVAL
-                  </Link>
-                )}
-                {statusArr.includes("Clearance") && (
-                  <Link
-                    href="/clearance"
-                    onClick={(e) => e.stopPropagation()}
-                    className="bg-orange-500 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-orange-600 transition-colors"
-                  >
-                    CLEARANCE
-                  </Link>
-                )}
-                {statusArr.includes("Limited Edition") && (
-                  <Link
-                    href="/limited-edition"
-                    onClick={(e) => e.stopPropagation()}
-                    className="bg-jorrey-gold text-jorrey-black text-[9px] font-bold tracking-widest uppercase px-2 py-1 hover:bg-jorrey-gold-dark transition-colors"
-                  >
-                    LIMITED EDITION
-                  </Link>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Favorites + Watchlist — top-end */}
-          {user && (
-            <div className="absolute top-2 end-2 z-20 flex flex-col gap-1.5">
-              <button
-                onClick={handleToggleFavorite}
-                aria-label={isFavorite(product.id) ? "Remove from favorites" : "Add to favorites"}
-                className={`w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors ${
-                  isFavorite(product.id) ? "text-red-500" : "text-gray-400 hover:text-red-400"
-                }`}
-              >
-                <Heart
-                  size={13}
-                  fill={isFavorite(product.id) ? "currentColor" : "none"}
-                  strokeWidth={isFavorite(product.id) ? 0 : 2}
-                />
-              </button>
-              {/* Bell is more prominent when OOS */}
-              <button
-                onClick={handleToggleWatchlist}
-                aria-label={isWatched(product.id) ? "Remove from watchlist" : "Add to watchlist"}
-                className={`rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors ${
-                  isOutOfStock ? "w-8 h-8 ring-2 ring-jorrey-gold/40" : "w-7 h-7"
-                } ${isWatched(product.id) ? "text-jorrey-gold" : "text-gray-400 hover:text-jorrey-gold"}`}
-              >
-                <Bell
-                  size={isOutOfStock ? 15 : 13}
-                  fill={isWatched(product.id) ? "currentColor" : "none"}
-                  strokeWidth={isWatched(product.id) ? 0 : 2}
-                />
-              </button>
-            </div>
-          )}
-
-          {/* OOS watchlist hint (non-signed-in) */}
-          {isOutOfStock && !user && (
-            <div className="absolute bottom-0 start-0 end-0 z-20 bg-jorrey-black/80 text-white text-[9px] tracking-wide text-center py-2 px-3">
-              Sign in to get notified when back in stock
-            </div>
-          )}
-
-          {/* Hover overlay — buy/add buttons (hidden when OOS) */}
-          {!isOutOfStock && (
-            <div className="absolute inset-0 bg-jorrey-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-end justify-end gap-2 p-3">
-              {whatsappNumber && (
-                <button
-                  onClick={quickBuyNow}
-                  className="flex items-center gap-1.5 bg-jorrey-gold text-jorrey-black text-[10px] tracking-widest uppercase px-4 py-2 font-semibold hover:bg-jorrey-gold-light transition-colors w-full justify-center"
-                >
-                  <Zap size={11} />
-                  {t("buy_now")}
-                </button>
-              )}
-              <button
-                onClick={quickAddToCart}
-                className="flex items-center gap-1.5 bg-jorrey-white text-jorrey-black text-[10px] tracking-widest uppercase px-4 py-2 font-semibold hover:bg-jorrey-beige transition-colors w-full justify-center"
-              >
-                <ShoppingBag size={11} />
-                {t("add_to_bag")}
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Info */}
-        <div className="space-y-1">
-          <p className="text-jorrey-black/40 text-[11px] tracking-widest uppercase font-sans">
-            {product.category}
-          </p>
-          <h3 className="font-serif text-lg text-jorrey-black group-hover:text-jorrey-gold-dark transition-colors duration-300">
-            {isRTL && product.nameAr ? product.nameAr : product.name}
-          </h3>
-          {isLiquidCat(product.category) && product.ml && (
-            <p className="text-jorrey-black/50 text-[11px] tracking-widest uppercase font-sans">
-              {product.ml} ML
-            </p>
-          )}
-          {(product.summary || product.summaryAr) && (
-            <p className="text-gray-500 text-xs leading-relaxed line-clamp-2">
-              {isRTL && product.summaryAr ? product.summaryAr : product.summary}
-            </p>
-          )}
-          {hasOnSale && product.salePrice ? (
-            <div className="flex items-center gap-2">
-              <p className="text-red-600 text-sm font-sans tracking-wide font-medium">
-                {currencySymbol}
-                {product.salePrice.toLocaleString()}
-              </p>
-              <p className="text-jorrey-black/40 text-xs font-sans line-through">
-                {currencySymbol}
-                {product.price.toLocaleString()}
-              </p>
-            </div>
-          ) : (
-            <p className={`text-sm font-sans tracking-wide ${isOutOfStock ? "text-jorrey-black/30" : "text-jorrey-black/70"}`}>
-              {currencySymbol}
-              {product.price.toLocaleString()}
-            </p>
-          )}
-        </div>
-      </motion.div>
+      <ShirtParallaxCard
+        title={isRTL && product.nameAr ? product.nameAr : product.name}
+        description={descriptionText}
+        price={priceDisplay}
+        imageUrl={images[0]}
+        buyNowLabel={isOutOfStock ? tp("badge_out_of_stock") : (isRTL ? "اشترِ الآن" : "Buy Now")}
+        onBuyNow={handleBuyNow}
+        onImageClick={() => setModalOpen(true)}
+        badgeSlot={badges}
+        actionSlot={actions}
+        colorsDisplay={colorsDisplay}
+        shippingLabel={shippingLabel}
+        className={isOutOfStock ? "opacity-60 grayscale-[25%]" : ""}
+      />
 
       <ProductModal
         open={modalOpen}

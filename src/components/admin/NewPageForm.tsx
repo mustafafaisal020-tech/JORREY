@@ -19,9 +19,10 @@ interface Props {
   parentPages: CustomPage[];
   defaultParentId?: string;
   homeSections?: HomeSection[];
+  defaultGroup?: string;
 }
 
-export default function NewPageForm({ parentPages, defaultParentId, homeSections = [] }: Props) {
+export default function NewPageForm({ parentPages, defaultParentId, homeSections = [], defaultGroup }: Props) {
   const router = useRouter();
   const [form, setForm] = useState({
     title: "",
@@ -30,6 +31,7 @@ export default function NewPageForm({ parentPages, defaultParentId, homeSections
     visible: true,
     parentId: defaultParentId ?? "",
     homeSectionId: "",
+    pageGroup: defaultGroup ?? "",
   });
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
@@ -38,7 +40,12 @@ export default function NewPageForm({ parentPages, defaultParentId, homeSections
     e.preventDefault();
     if (!form.title || !form.slug) { setErr("Title and slug are required"); return; }
     setSaving(true);
-    const body = { ...form, parentId: form.parentId || undefined, homeSectionId: form.homeSectionId || undefined };
+    const body = {
+      ...form,
+      parentId: form.parentId || undefined,
+      homeSectionId: form.homeSectionId || undefined,
+      pageGroup: form.pageGroup || undefined,
+    };
     const res = await fetch("/api/pages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

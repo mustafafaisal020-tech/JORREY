@@ -1,105 +1,17 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
-import { motion, useMotionValue, useTransform, animate } from "framer-motion";
+import { useState, useRef } from "react";
+import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import type { Category } from "@/lib/category-types";
 
-// Per-card component so each card can own its parallax hooks
-function CategoryCard({
-  cat,
-  index,
-  x,
-  isRTL,
-}: {
-  cat: Category;
-  index: number;
-  x: ReturnType<typeof useMotionValue<number>>;
-  isRTL: boolean;
-}) {
-  const vwRef = useRef(390);
+import { Swiper, SwiperSlide } from "swiper/react";
+import { EffectCoverflow, A11y } from "swiper/modules";
+import type { Swiper as SwiperType } from "swiper";
 
-  useEffect(() => {
-    vwRef.current = window.innerWidth;
-    const h = () => { vwRef.current = window.innerWidth; };
-    window.addEventListener("resize", h);
-    return () => window.removeEventListener("resize", h);
-  }, []);
-
-  // Offset of this card from viewport center (0 = centred, ±vw = adjacent)
-  const offset = useTransform(x, (v) => v + index * vwRef.current);
-
-  // Image lags at 25% speed → depth illusion
-  const imgX = useTransform(offset, (v) => -v * 0.25);
-
-  // Title floats slightly against motion
-  const titleY = useTransform(offset, (v) => v * 0.035);
-
-  const name = isRTL && cat.nameAr ? cat.nameAr : cat.name;
-
-  return (
-    <div
-      style={{
-        width: "100vw",
-        height: "100%",
-        flexShrink: 0,
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      {/* Parallax image layer — oversized so parallax never shows edges */}
-      <motion.div
-        style={{ x: imgX, position: "absolute", inset: "-8% -10%" }}
-      >
-        {cat.image ? (
-          <Image
-            src={cat.image}
-            alt={name}
-            fill
-            priority={index === 0}
-            sizes="120vw"
-            className="object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-jorrey-gold/20 via-jorrey-black/80 to-black" />
-        )}
-      </motion.div>
-
-      {/* Overlays */}
-      <div className="absolute inset-0 bg-black/30" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/10 to-black/25" />
-
-      {/* Parallax text layer */}
-      <motion.div
-        style={{ y: titleY }}
-        className="absolute inset-0 flex flex-col items-center justify-end pb-28 px-8 text-center pointer-events-none"
-      >
-        <p className="text-jorrey-gold/55 text-[9px] tracking-[0.65em] uppercase mb-4">
-          {isRTL ? "المجموعة" : "Collection"}
-        </p>
-
-        <h2
-          className="font-serif text-white leading-tight mb-5"
-          style={{ fontSize: "clamp(2rem, 8vw, 4.5rem)", letterSpacing: "0.09em" }}
-        >
-          {name}
-        </h2>
-
-        <div className="flex items-center gap-3 opacity-45">
-          <div className="w-8 h-px bg-jorrey-gold" />
-          <span className="text-white text-[9px] tracking-[0.5em] uppercase">
-            {isRTL ? "اضغط للاستعراض" : "Tap to browse"}
-          </span>
-          <div className="w-8 h-px bg-jorrey-gold" />
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
-// ─── Main viewer ─────────────────────────────────────────────────────────────
+import "swiper/css";
+import "swiper/css/effect-coverflow";
 
 export default function CategorySwipeViewer({
   categories,
@@ -108,129 +20,9 @@ export default function CategorySwipeViewer({
 }) {
   const locale = useLocale();
   const isRTL = locale === "ar";
-  const router = useRouter();
-  const n = categories.length;
-
-  const x = useMotionValue(0);
-  const tiltY = useMotionValue(0);
   const [currentIdx, setCurrentIdx] = useState(0);
-  const currentIdxRef = useRef(0);
-
-  const drag = useRef({
-    on: false,
-    startClientX: 0,
-    startX: 0,
-    lastClientX: 0,
-    lastT: 0,
-    vel: 0,
-  });
-
-  const snapTo = useCallback(
-    (idx: number) => {
-      const clamped = Math.max(0, Math.min(n - 1, idx));
-      const vw = window.innerWidth;
-      animate(x, -clamped * vw, {
-        type: "spring",
-        stiffness: 320,
-        damping: 38,
-        mass: 0.8,
-      });
-      animate(tiltY, 0, { type: "spring", stiffness: 400, damping: 35 });
-      setCurrentIdx(clamped);
-      currentIdxRef.current = clamped;
-    },
-    [n, x, tiltY]
-  );
-
-  // Keyboard navigation
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight")
-        snapTo(currentIdxRef.current + (isRTL ? -1 : 1));
-      if (e.key === "ArrowLeft")
-        snapTo(currentIdxRef.current + (isRTL ? 1 : -1));
-    };
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, [snapTo, isRTL]);
-
-  const onPointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      drag.current = {
-        on: true,
-        startClientX: e.clientX,
-        startX: x.get(),
-        lastClientX: e.clientX,
-        lastT: Date.now(),
-        vel: 0,
-      };
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    },
-    [x]
-  );
-
-  const onPointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (!drag.current.on) return;
-      const vw = window.innerWidth;
-      const dx = e.clientX - drag.current.startClientX;
-      const raw = drag.current.startX + dx;
-      const minX = -(n - 1) * vw;
-      const maxX = 0;
-
-      // Rubber-band resistance at edges
-      const bounded =
-        raw < minX
-          ? minX + (raw - minX) * 0.1
-          : raw > maxX
-          ? maxX + (raw - maxX) * 0.1
-          : raw;
-      x.set(bounded);
-
-      // Track velocity
-      const now = Date.now();
-      const dt = now - drag.current.lastT;
-      if (dt > 0)
-        drag.current.vel = (e.clientX - drag.current.lastClientX) / dt;
-      drag.current.lastClientX = e.clientX;
-      drag.current.lastT = now;
-
-      // 3D tilt proportional to swipe velocity (swipe left → lean left)
-      const tilt = Math.max(-8, Math.min(8, -drag.current.vel * 10));
-      tiltY.set(tilt);
-    },
-    [x, tiltY, n]
-  );
-
-  const onPointerUp = useCallback(
-    (e: React.PointerEvent) => {
-      if (!drag.current.on) return;
-      drag.current.on = false;
-
-      const dx = e.clientX - drag.current.startClientX;
-      const vel = drag.current.vel;
-      const vw = window.innerWidth;
-
-      // Tap: navigate to category page
-      if (Math.abs(dx) < 10) {
-        const cat = categories[currentIdxRef.current];
-        if (cat) router.push(`/category/${cat.slug}`);
-        animate(tiltY, 0, { type: "spring", stiffness: 400, damping: 35 });
-        return;
-      }
-
-      // Determine next index from swipe distance + velocity
-      let next = currentIdxRef.current;
-      const threshold = vw * 0.2;
-      const dir = isRTL ? -1 : 1;
-
-      if (dx < -threshold || vel < -0.4) next += dir;
-      else if (dx > threshold || vel > 0.4) next -= dir;
-
-      snapTo(next);
-    },
-    [categories, router, isRTL, tiltY, snapTo]
-  );
+  const swiperRef = useRef<SwiperType | null>(null);
+  const n = categories.length;
 
   if (n === 0) {
     return (
@@ -242,45 +34,175 @@ export default function CategorySwipeViewer({
     );
   }
 
+  // Arrow visibility — accounts for RTL layout reversal
+  const canGoPrev = currentIdx > 0;
+  const canGoNext = currentIdx < n - 1;
+  const showLeft = isRTL ? canGoNext : canGoPrev;
+  const showRight = isRTL ? canGoPrev : canGoNext;
+
   return (
     <section
-      className="relative w-full bg-black overflow-hidden"
-      style={{ height: "100dvh", perspective: "1400px" }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerLeave={onPointerUp}
+      className="relative w-screen bg-black select-none"
+      style={{ height: "100dvh" }}
     >
-      {/* 3D tilt wrapper → sliding track */}
-      <motion.div style={{ rotateY: tiltY, width: "100%", height: "100%" }}>
-        <motion.div
-          style={{
-            x,
-            display: "flex",
-            width: `${n * 100}vw`,
-            height: "100%",
-          }}
-        >
-          {categories.map((cat, i) => (
-            <CategoryCard
-              key={cat.id}
-              cat={cat}
-              index={i}
-              x={x}
-              isRTL={isRTL}
-            />
-          ))}
-        </motion.div>
-      </motion.div>
-
-      {/* ── Index counter top-right ── */}
-      <div className="absolute top-5 right-5 z-10 pointer-events-none text-white/20 text-[10px] tracking-[0.3em] tabular-nums">
+      {/* Slide counter */}
+      <div
+        className={`absolute top-5 z-20 text-white/20 text-[10px] tracking-[0.3em] tabular-nums pointer-events-none ${
+          isRTL ? "left-5" : "right-5"
+        }`}
+      >
         {String(currentIdx + 1).padStart(2, "0")} /{" "}
         {String(n).padStart(2, "0")}
       </div>
 
-      {/* ── Progress dots ── */}
-      <div className="absolute bottom-8 inset-x-0 z-10 flex justify-center items-center gap-2 pointer-events-none">
+      {/* Swiper — remount on locale change so dir initialises correctly */}
+      <Swiper
+        key={isRTL ? "rtl" : "ltr"}
+        modules={[EffectCoverflow, A11y]}
+        effect="coverflow"
+        centeredSlides
+        slidesPerView={1}
+        coverflowEffect={{
+          rotate: 8,
+          stretch: 0,
+          depth: 120,
+          modifier: 1,
+          slideShadows: false,
+        }}
+        dir={isRTL ? "rtl" : "ltr"}
+        onSwiper={(swiper) => {
+          swiperRef.current = swiper;
+        }}
+        onSlideChange={(swiper) => setCurrentIdx(swiper.realIndex)}
+        className="w-full h-full"
+        a11y={{
+          prevSlideMessage: isRTL ? "الشريحة السابقة" : "Previous category",
+          nextSlideMessage: isRTL ? "الشريحة التالية" : "Next category",
+        }}
+      >
+        {categories.map((cat, idx) => {
+          const name = isRTL && cat.nameAr ? cat.nameAr : cat.name;
+          return (
+            <SwiperSlide key={cat.id} className="h-full">
+              {/*
+               * Full-area Link: Swiper's default preventClicks:true stops this
+               * firing during/after a swipe, so tapping navigates, swiping does not.
+               */}
+              <Link
+                href={`/category/${cat.slug}`}
+                className="absolute inset-0 block"
+                draggable={false}
+                tabIndex={idx === currentIdx ? 0 : -1}
+              >
+                {/* Image — object-contain keeps the full portrait product visible
+                    on landscape/desktop screens (black bars fill the remainder). */}
+                {cat.image ? (
+                  <Image
+                    src={cat.image}
+                    alt={name}
+                    fill
+                    sizes="100vw"
+                    className="object-contain"
+                    priority={idx === 0}
+                    draggable={false}
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-br from-jorrey-gold/20 via-jorrey-black/80 to-black" />
+                )}
+
+                {/* Gradient overlays for text legibility */}
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background:
+                      "linear-gradient(to top, rgba(0,0,0,0.90) 0%, rgba(0,0,0,0) 52%, rgba(0,0,0,0.22) 100%)",
+                  }}
+                />
+
+                {/* Text overlay */}
+                <div className="absolute inset-0 flex flex-col items-center justify-end pb-20 px-8 text-center pointer-events-none">
+                  <p className="text-jorrey-gold/55 text-[9px] tracking-[0.65em] uppercase mb-4">
+                    {isRTL ? "المجموعة" : "Collection"}
+                  </p>
+                  <h2
+                    className="font-serif text-white leading-tight mb-5"
+                    style={{
+                      fontSize: "clamp(1.8rem, 7vw, 4.5rem)",
+                      letterSpacing: "0.09em",
+                    }}
+                  >
+                    {name}
+                  </h2>
+                  <div className="flex items-center gap-3 opacity-40">
+                    <div className="w-8 h-px bg-jorrey-gold" />
+                    <span className="text-white text-[9px] tracking-[0.5em] uppercase">
+                      {isRTL ? "اضغط للاستعراض" : "Tap to browse"}
+                    </span>
+                    <div className="w-8 h-px bg-jorrey-gold" />
+                  </div>
+                </div>
+              </Link>
+            </SwiperSlide>
+          );
+        })}
+      </Swiper>
+
+      {/* Left arrow */}
+      <button
+        onClick={() =>
+          isRTL
+            ? swiperRef.current?.slideNext()
+            : swiperRef.current?.slidePrev()
+        }
+        aria-label={isRTL ? "التالي" : "Previous"}
+        className={`absolute left-5 top-1/2 -translate-y-1/2 z-20 p-2 text-white/30 hover:text-white/80 transition-all duration-200 ${
+          showLeft ? "" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        <svg
+          className="w-8 h-8"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M15 19l-7-7 7-7"
+          />
+        </svg>
+      </button>
+
+      {/* Right arrow */}
+      <button
+        onClick={() =>
+          isRTL
+            ? swiperRef.current?.slidePrev()
+            : swiperRef.current?.slideNext()
+        }
+        aria-label={isRTL ? "السابق" : "Next"}
+        className={`absolute right-5 top-1/2 -translate-y-1/2 z-20 p-2 text-white/30 hover:text-white/80 transition-all duration-200 ${
+          showRight ? "" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        <svg
+          className="w-8 h-8"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9 5l7 7-7 7"
+          />
+        </svg>
+      </button>
+
+      {/* Progress dots */}
+      <div className="absolute bottom-8 inset-x-0 z-20 flex justify-center items-center gap-2 pointer-events-none">
         {categories.map((_, i) => (
           <div
             key={i}
@@ -292,50 +214,6 @@ export default function CategorySwipeViewer({
           />
         ))}
       </div>
-
-      {/* ── Desktop chevrons ── */}
-      {currentIdx > 0 && (
-        <button
-          className="absolute left-5 top-1/2 -translate-y-1/2 z-10 text-white/25 hover:text-white/65 transition-colors p-2"
-          onClick={() => snapTo(currentIdx - 1)}
-          aria-label="Previous category"
-        >
-          <svg
-            className="w-8 h-8"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-        </button>
-      )}
-      {currentIdx < n - 1 && (
-        <button
-          className="absolute right-5 top-1/2 -translate-y-1/2 z-10 text-white/25 hover:text-white/65 transition-colors p-2"
-          onClick={() => snapTo(currentIdx + 1)}
-          aria-label="Next category"
-        >
-          <svg
-            className="w-8 h-8"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M9 5l7 7-7 7"
-            />
-          </svg>
-        </button>
-      )}
     </section>
   );
 }

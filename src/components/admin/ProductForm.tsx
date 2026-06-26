@@ -40,12 +40,13 @@ const schema = z
     descriptionAr: z.string().optional(),
     price: z.number().positive("Must be positive"),
     category: z.string().min(1, "Required"),
-    color: z.string(),
+    colors: z.array(z.string()),
     sku: z.string().min(1, "Required"),
     sizes: z.array(z.string()),
     images: z.array(z.string()),
     status: z.array(z.string()),
     salePrice: z.number().optional(),
+    shippingCost: z.number().min(0).optional(),
     skincareType: z.string().optional(),
     ml: z.number().optional(),
     pattern: z.string().optional(),
@@ -131,7 +132,7 @@ export default function ProductForm({ product, categories = [] }: ProductFormPro
           descriptionAr: product.descriptionAr ?? "",
           price: product.price,
           category: product.category,
-          color: product.color,
+          colors: product.colors?.length ? product.colors : (product.color && product.color !== "N/A" ? [product.color] : []),
           sku: product.sku,
           sizes: product.sizes,
           images: product.images?.length
@@ -141,6 +142,7 @@ export default function ProductForm({ product, categories = [] }: ProductFormPro
             : [],
           status: product.status ?? [],
           salePrice: product.salePrice,
+          shippingCost: product.shippingCost ?? 0,
           skincareType: product.skincareType ?? "",
           ml: product.ml,
           pattern: product.pattern ?? "",
@@ -156,12 +158,13 @@ export default function ProductForm({ product, categories = [] }: ProductFormPro
           descriptionAr: "",
           price: 0,
           category: "",
-          color: "",
+          colors: [],
           sku: "",
           sizes: [],
           images: [],
           status: [],
           salePrice: undefined,
+          shippingCost: 0,
           skincareType: "",
           ml: undefined,
           pattern: "",
@@ -171,6 +174,7 @@ export default function ProductForm({ product, categories = [] }: ProductFormPro
   });
 
   const selectedSizes = watch("sizes");
+  const selectedColors = watch("colors") ?? [];
   const imagesValue = watch("images");
   const categoryValue = watch("category");
   const statusValue = watch("status") ?? [];
@@ -199,12 +203,14 @@ export default function ProductForm({ product, categories = [] }: ProductFormPro
       ...data,
       image: data.images[0] ?? "",
       sizes: showSizes ? data.sizes : [],
-      color: data.color || "N/A",
+      colors: data.colors,
+      color: data.colors[0] || "N/A",
       nameAr: data.nameAr || undefined,
       summaryAr: data.summaryAr || undefined,
       descriptionAr: data.descriptionAr || undefined,
       status: data.status,
       salePrice: data.status.includes("On Sale") ? data.salePrice : undefined,
+      shippingCost: data.shippingCost ?? 0,
       skincareType: showSkincareType ? data.skincareType || undefined : undefined,
       ml: showLiquidMl ? data.ml || undefined : undefined,
       pattern: showFashionExtra ? data.pattern || undefined : undefined,
@@ -344,8 +350,8 @@ export default function ProductForm({ product, categories = [] }: ProductFormPro
         </div>
       </div>
 
-      {/* ── Price + Category + Color ── */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* ── Price + Shipping ── */}
+      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label className="text-xs tracking-widest uppercase text-gray-500">Price</Label>
           <Input
@@ -357,71 +363,112 @@ export default function ProductForm({ product, categories = [] }: ProductFormPro
           {errors.price && <p className="text-xs text-red-500">{errors.price.message}</p>}
         </div>
         <div className="space-y-2">
-          <Label className="text-xs tracking-widest uppercase text-gray-500">Category</Label>
-          <Select
-            defaultValue={product?.category}
-            onValueChange={(v) => setValue("category", v ?? "", { shouldValidate: true })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select…" />
-            </SelectTrigger>
-            <SelectContent>
-              {categoryList.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {c}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.category && (
-            <p className="text-xs text-red-500">{errors.category.message}</p>
-          )}
+          <Label className="text-xs tracking-widests uppercase text-gray-500">
+            Shipping Cost{" "}
+            <span className="text-gray-300 normal-case tracking-normal font-normal">(0 = Free)</span>
+          </Label>
+          <Input
+            {...register("shippingCost", { valueAsNumber: true })}
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="0"
+          />
+          {errors.shippingCost && <p className="text-xs text-red-500">{errors.shippingCost.message}</p>}
         </div>
-        <div className="space-y-2">
-          <Label className="text-xs tracking-widest uppercase text-gray-500">Color</Label>
-          <Select
-            defaultValue={product?.color ?? ""}
-            onValueChange={(v) => setValue("color", v ?? "", { shouldValidate: true })}
-          >
-            <SelectTrigger className="rounded-none">
-              <SelectValue placeholder="Select color…">
-                {(() => {
-                  const c = PRODUCT_COLORS.find((x) => x.name === watch("color"));
-                  return c ? (
-                    <span className="flex items-center gap-2">
+      </div>
+
+      {/* ── Category ── */}
+      <div className="space-y-2">
+        <Label className="text-xs tracking-widest uppercase text-gray-500">Category</Label>
+        <Select
+          defaultValue={product?.category}
+          onValueChange={(v) => setValue("category", v ?? "", { shouldValidate: true })}
+        >
+          <SelectTrigger className="max-w-xs">
+            <SelectValue placeholder="Select…" />
+          </SelectTrigger>
+          <SelectContent>
+            {categoryList.map((c) => (
+              <SelectItem key={c} value={c}>{c}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {errors.category && <p className="text-xs text-red-500">{errors.category.message}</p>}
+      </div>
+
+      {/* ── Available Colors (multi-select) ── */}
+      <div className="space-y-3">
+        <div>
+          <Label className="text-xs tracking-widest uppercase text-gray-500">
+            Available Colors
+            <span className="ms-1.5 text-gray-300 normal-case tracking-normal font-normal">
+              — الألوان المتوفرة
+            </span>
+          </Label>
+          {selectedColors.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {selectedColors.map((name) => {
+                const c = PRODUCT_COLORS.find((x) => x.name === name);
+                return (
+                  <span
+                    key={name}
+                    className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 px-2 py-0.5 text-xs"
+                  >
+                    {c && (
                       <span
-                        className="w-3 h-3 rounded-full border border-gray-300 flex-shrink-0"
+                        className="w-2.5 h-2.5 rounded-full border border-gray-300 flex-shrink-0"
                         style={{ backgroundColor: c.hex }}
                       />
-                      <span style={{ color: isLightHex(c.hex) ? "#374151" : c.hex }}>
-                        {c.name}
-                      </span>
-                    </span>
-                  ) : (
-                    watch("color") || "Select color…"
-                  );
-                })()}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent className="max-h-64">
-              {PRODUCT_COLORS.map((c) => (
-                <SelectItem key={c.name} value={c.name}>
-                  <span className="flex items-center gap-2">
-                    <span
-                      className="w-3 h-3 rounded-full border border-gray-200 flex-shrink-0"
-                      style={{ backgroundColor: c.hex }}
-                    />
-                    <span
-                      style={{ color: isLightHex(c.hex) ? "#374151" : c.hex }}
-                      className="font-medium"
+                    )}
+                    {name}
+                    <button
+                      type="button"
+                      onClick={() => setValue("colors", selectedColors.filter((x) => x !== name), { shouldValidate: true })}
+                      className="text-gray-400 hover:text-red-500 ms-0.5"
                     >
-                      {c.name}
-                    </span>
+                      ×
+                    </button>
                   </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 max-h-48 overflow-y-auto border border-gray-100 p-3 bg-gray-50">
+          {PRODUCT_COLORS.map((c) => {
+            const checked = selectedColors.includes(c.name);
+            return (
+              <label
+                key={c.name}
+                className={`flex items-center gap-2 cursor-pointer px-2 py-1.5 text-xs transition-colors ${
+                  checked ? "bg-jorrey-black text-white" : "hover:bg-white"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={checked}
+                  onChange={(e) => {
+                    const next = e.target.checked
+                      ? [...selectedColors, c.name]
+                      : selectedColors.filter((x) => x !== c.name);
+                    setValue("colors", next, { shouldValidate: true });
+                  }}
+                />
+                <span
+                  className="w-3 h-3 rounded-full border flex-shrink-0"
+                  style={{
+                    backgroundColor: c.hex,
+                    borderColor: checked ? "rgba(255,255,255,0.4)" : "#D1D5DB",
+                  }}
+                />
+                <span style={{ color: checked ? undefined : isLightHex(c.hex) ? "#374151" : c.hex }}>
+                  {c.name}
+                </span>
+              </label>
+            );
+          })}
         </div>
       </div>
 

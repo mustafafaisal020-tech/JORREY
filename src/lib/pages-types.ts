@@ -20,6 +20,7 @@ export interface CustomPage {
   order?: number;
   parentId?: string;
   homeSectionId?: string;
+  pageGroup?: string;    // "legal" for privacy/terms/shipping pages
   sections: CustomSection[];
   createdAt: string;
   updatedAt: string;

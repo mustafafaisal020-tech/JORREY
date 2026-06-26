@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
-import { LayoutDashboard, Package, Tag, FileText, Settings, Users } from "lucide-react";
+import { LayoutDashboard, Package, Tag, FileText, Settings, Users, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const nav = [
   { label: "Overview",   href: "/admin",            icon: LayoutDashboard },
+  { label: "Orders",     href: "/admin/orders",     icon: ShoppingBag },
   { label: "Products",   href: "/admin/products",   icon: Package },
   { label: "Categories", href: "/admin/categories", icon: Tag },
   { label: "Pages",      href: "/admin/pages",      icon: FileText },
