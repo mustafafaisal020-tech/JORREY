@@ -68,6 +68,9 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
   const [verifiedToken, setVerifiedToken] = useState("");
+  const [authEmail, setAuthEmail] = useState("");
+  const [otpMethod, setOtpMethod] = useState<"whatsapp" | "email">("whatsapp");
+  const [showEmailField, setShowEmailField] = useState(false);
   // Registration extras (only for new users)
   const [regFirstName, setRegFirstName] = useState("");
   const [regEmail, setRegEmail] = useState("");
@@ -177,13 +180,19 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
       const res = await fetch("/api/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: normalisePhone(authPhone), locale }),
+        body: JSON.stringify({ phone: normalisePhone(authPhone), email: authEmail.trim() || undefined, locale }),
       });
+      const data = await res.json();
       if (!res.ok) {
-        const { error } = await res.json();
-        setAuthError(error ?? "Could not send code.");
+        if (data.needsEmail) {
+          setShowEmailField(true);
+          setAuthError(data.error ?? (isRTL ? "أضف بريدك الإلكتروني أدناه" : "Add your email address below"));
+        } else {
+          setAuthError(data.error ?? "Could not send code.");
+        }
         return;
       }
+      setOtpMethod(data.method ?? "whatsapp");
       setAuthStep("otp");
     } catch {
       setAuthError("Network error. Please try again.");
@@ -306,11 +315,13 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
     setAuthError("");
     setAuthLoading(true);
     try {
-      await fetch("/api/auth/send-otp", {
+      const res = await fetch("/api/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: normalisePhone(authPhone), locale }),
+        body: JSON.stringify({ phone: normalisePhone(authPhone), email: authEmail.trim() || undefined, locale }),
       });
+      const data = await res.json();
+      if (res.ok) setOtpMethod(data.method ?? "whatsapp");
     } finally {
       setAuthLoading(false);
     }
@@ -424,6 +435,9 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
     setAuthOtp("");
     setAuthError("");
     setVerifiedToken("");
+    setAuthEmail("");
+    setOtpMethod("whatsapp");
+    setShowEmailField(false);
     setRegFirstName("");
     setRegEmail("");
     setProfileError("");
@@ -1121,8 +1135,8 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
                 {authStep === "phone" && (
                   <form onSubmit={handleSendOtp} className="space-y-4">
                     <div className="text-center pb-2">
-                      <div className="w-11 h-11 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <Phone size={20} className="text-green-600" />
+                      <div className="w-11 h-11 bg-jorrey-beige rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Phone size={20} className="text-jorrey-black" />
                       </div>
                       <p className="text-xs text-gray-400">{t("phone_auth_hint")}</p>
                     </div>
@@ -1142,6 +1156,25 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
                       </div>
                       {authPhoneError && <p className="text-xs text-red-500">{authPhoneError}</p>}
                     </div>
+
+                    {/* Email fallback field — shown always as optional, or revealed on needsEmail */}
+                    {(showEmailField || true) && (
+                      <div className="space-y-1">
+                        <Label className="text-[10px] tracking-widest uppercase text-gray-400">
+                          {t("email_for_otp")}
+                        </Label>
+                        <Input
+                          type="email"
+                          placeholder="you@example.com"
+                          value={authEmail}
+                          onChange={(e) => setAuthEmail(e.target.value)}
+                          dir="ltr"
+                          className={inp}
+                        />
+                        <p className="text-[10px] text-gray-400">{t("email_for_otp_hint")}</p>
+                      </div>
+                    )}
+
                     {authError && <p className="text-xs text-red-500 bg-red-50 px-3 py-2">{authError}</p>}
                     <Button
                       type="submit"
@@ -1157,12 +1190,14 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
                 {authStep === "otp" && (
                   <form onSubmit={handleVerifyOtp} className="space-y-4">
                     <div className="text-center pb-1">
-                      <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <Phone size={18} className="text-green-600" />
+                      <div className="w-10 h-10 bg-jorrey-beige rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Phone size={18} className="text-jorrey-black" />
                       </div>
                       <p className="text-sm font-medium text-jorrey-black">{t("verify_phone_title")}</p>
                       <p className="text-xs text-gray-400 mt-1">
-                        {t("code_sent").replace("{phone}", authPhone)}
+                        {otpMethod === "email"
+                          ? t("code_sent_email").replace("{email}", authEmail)
+                          : t("code_sent").replace("{phone}", authPhone)}
                       </p>
                     </div>
                     <Input
