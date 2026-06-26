@@ -225,6 +225,7 @@
         "email_for_otp": "Email (fallback for code delivery)",
         "email_for_otp_hint": "Used when WhatsApp is unavailable",
         "code_sent_email": "Code sent to {email} via email",
+        "code_sent_both": "Code sent to {phone} via WhatsApp and to {email} via email",
         "send_code": "Send Code",
         "sending_code": "Sending…",
         "code_sent": "Code sent to {phone} via WhatsApp",

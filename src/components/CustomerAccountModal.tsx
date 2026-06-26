@@ -69,7 +69,7 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
   const [authError, setAuthError] = useState("");
   const [verifiedToken, setVerifiedToken] = useState("");
   const [authEmail, setAuthEmail] = useState("");
-  const [otpMethod, setOtpMethod] = useState<"whatsapp" | "email">("whatsapp");
+  const [otpMethod, setOtpMethod] = useState<"whatsapp" | "email" | "both">("whatsapp");
   const [showEmailField, setShowEmailField] = useState(false);
   // Registration extras (only for new users)
   const [regFirstName, setRegFirstName] = useState("");
@@ -322,6 +322,7 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
       });
       const data = await res.json();
       if (res.ok) setOtpMethod(data.method ?? "whatsapp");
+
     } finally {
       setAuthLoading(false);
     }
@@ -1157,23 +1158,21 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
                       {authPhoneError && <p className="text-xs text-red-500">{authPhoneError}</p>}
                     </div>
 
-                    {/* Email fallback field — shown always as optional, or revealed on needsEmail */}
-                    {(showEmailField || true) && (
-                      <div className="space-y-1">
-                        <Label className="text-[10px] tracking-widest uppercase text-gray-400">
-                          {t("email_for_otp")}
-                        </Label>
-                        <Input
-                          type="email"
-                          placeholder="you@example.com"
-                          value={authEmail}
-                          onChange={(e) => setAuthEmail(e.target.value)}
-                          dir="ltr"
-                          className={inp}
-                        />
-                        <p className="text-[10px] text-gray-400">{t("email_for_otp_hint")}</p>
-                      </div>
-                    )}
+                    {/* Email field — always shown; sent in parallel with WhatsApp when provided */}
+                    <div className="space-y-1">
+                      <Label className="text-[10px] tracking-widest uppercase text-gray-400">
+                        {t("email_for_otp")}
+                      </Label>
+                      <Input
+                        type="email"
+                        placeholder="you@example.com"
+                        value={authEmail}
+                        onChange={(e) => setAuthEmail(e.target.value)}
+                        dir="ltr"
+                        className={inp}
+                      />
+                      <p className="text-[10px] text-gray-400">{t("email_for_otp_hint")}</p>
+                    </div>
 
                     {authError && <p className="text-xs text-red-500 bg-red-50 px-3 py-2">{authError}</p>}
                     <Button
@@ -1195,9 +1194,11 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
                       </div>
                       <p className="text-sm font-medium text-jorrey-black">{t("verify_phone_title")}</p>
                       <p className="text-xs text-gray-400 mt-1">
-                        {otpMethod === "email"
-                          ? t("code_sent_email").replace("{email}", authEmail)
-                          : t("code_sent").replace("{phone}", authPhone)}
+                        {otpMethod === "both"
+                          ? t("code_sent_both").replace("{phone}", authPhone).replace("{email}", authEmail)
+                          : otpMethod === "email"
+                            ? t("code_sent_email").replace("{email}", authEmail)
+                            : t("code_sent").replace("{phone}", authPhone)}
                       </p>
                     </div>
                     <Input

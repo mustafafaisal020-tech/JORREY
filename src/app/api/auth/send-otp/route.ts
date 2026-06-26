@@ -40,32 +40,44 @@ export async function POST(req: NextRequest) {
     const code = generateOtp();
     await storeOtp(normalised, code);
 
-    // 1. Try WhatsApp (Meta Cloud API) — works when WHATSAPP_API_TOKEN + WHATSAPP_PHONE_NUMBER_ID are set
-    const waSent = await sendWhatsApp(normalised, buildOtpMessage(normalised, code, locale));
+    const trimmedEmail = email?.trim() || "";
+
+    // Fire both channels in parallel — one code, delivered to both if available
+    const [waSent, emailSent] = await Promise.all([
+      sendWhatsApp(normalised, buildOtpMessage(normalised, code, locale)),
+      trimmedEmail ? sendOtpEmail(trimmedEmail, code, locale) : Promise.resolve(false),
+    ]);
+
+    if (waSent && emailSent) {
+      console.log(`[OTP] ${normalised} → ${code} (WhatsApp + email)`);
+      return NextResponse.json({ ok: true, method: "both" });
+    }
     if (waSent) {
       console.log(`[OTP] ${normalised} → ${code} (WhatsApp)`);
       return NextResponse.json({ ok: true, method: "whatsapp" });
     }
-
-    // 2. Fall back to email — works when Resend is configured and user provided an email
-    const trimmedEmail = email?.trim();
-    if (trimmedEmail) {
-      const emailSent = await sendOtpEmail(trimmedEmail, code, locale);
-      console.log(`[OTP] ${normalised} → ${code} (email${emailSent ? "" : " — Resend may not be configured"})`);
+    if (emailSent) {
+      console.log(`[OTP] ${normalised} → ${code} (email)`);
       return NextResponse.json({ ok: true, method: "email" });
     }
 
-    // 3. Neither delivery method available — ask for email
-    console.log(`[OTP] ${normalised} → ${code} (no delivery — dev only)`);
-    return NextResponse.json(
-      {
-        error: locale === "ar"
-          ? "أضف بريدك الإلكتروني أدناه لاستلام رمز التحقق"
-          : "Add your email address to receive the verification code",
-        needsEmail: true,
-      },
-      { status: 422 }
-    );
+    // Neither channel delivered — prompt for email if not provided
+    if (!trimmedEmail) {
+      console.log(`[OTP] ${normalised} → ${code} (no delivery — needsEmail)`);
+      return NextResponse.json(
+        {
+          error: locale === "ar"
+            ? "أضف بريدك الإلكتروني أدناه لاستلام رمز التحقق"
+            : "Add your email address to receive the verification code",
+          needsEmail: true,
+        },
+        { status: 422 }
+      );
+    }
+
+    // Both failed (APIs may be temporarily down) — code is stored, let customer proceed
+    console.warn(`[OTP] ${normalised} → ${code} (both channels failed — delivery uncertain)`);
+    return NextResponse.json({ ok: true, method: "email" });
   } catch (err) {
     console.error("[send-otp]", err);
     return NextResponse.json({ error: "Failed to send OTP" }, { status: 500 });

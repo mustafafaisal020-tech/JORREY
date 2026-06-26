@@ -274,8 +274,8 @@ export async function sendOtpEmail(to: string, code: string, locale: string): Pr
   if (!resend || !to) return false;
   const isAr = locale === "ar";
   const subject = isAr
-    ? `رمز التحقق الخاص بك في جوري: ${code}`
-    : `Your Jorrey verification code: ${code}`;
+    ? "رمز التحقق الخاص بك في جوري"
+    : "Your Jorrey verification code";
   try {
     await resend.emails.send({ from: FROM, to, subject, html: buildOtpEmailHtml(code, locale) });
     return true;
