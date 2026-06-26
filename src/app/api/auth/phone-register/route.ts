@@ -1,7 +1,9 @@
 /**
  * POST /api/auth/phone-register
- * Creates a new Clerk account + customer profile using a verified-phone token,
- * then returns a Clerk sign-in ticket.
+ * Creates a new Clerk account + customer profile for phone-only users
+ * (i.e. customers who did not provide an email at registration).
+ * Customers who provided an email use Clerk's client-side signUp flow instead;
+ * their profile is initialised by /api/auth/init-profile after email verification.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { clerkClient } from "@clerk/nextjs/server";
@@ -30,10 +32,9 @@ async function consumeVerifiedToken(token: string): Promise<string | null> {
 
 export async function POST(req: NextRequest) {
   try {
-    const { verifiedToken, firstName, email } = await req.json() as {
+    const { verifiedToken, firstName } = await req.json() as {
       verifiedToken: string;
       firstName: string;
-      email?: string;
     };
 
     if (!verifiedToken || !firstName?.trim()) {
@@ -45,41 +46,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Token expired. Please restart verification." }, { status: 400 });
     }
 
-    // Check if account already exists with this phone
     const existing = await getCustomerByPhone(phone);
     if (existing) {
       return NextResponse.json({ error: "already_exists" }, { status: 409 });
     }
 
-    // Use provided email or generate a virtual one from the phone digits
-    const effectiveEmail = email?.trim() ||
-      `wa${phone.replace(/\D/g, "")}@jorrey.app`;
-
     const clerk = await clerkClient();
 
-    // Create Clerk account
+    // Phone-only accounts use the phone number as the Clerk identifier.
+    // Requires "Phone number" to be enabled in the Clerk dashboard under
+    // User & Authentication → Email, Phone, Username.
     let user;
     try {
       user = await clerk.users.createUser({
-        emailAddress: [effectiveEmail],
+        phoneNumber: [phone],
         firstName: firstName.trim(),
         skipPasswordChecks: true,
       });
     } catch (clerkErr: unknown) {
-      // If email already exists, try to find the existing Clerk user
       const errMsg = String(clerkErr);
-      if (errMsg.includes("email") || errMsg.includes("exist")) {
+      if (errMsg.includes("phone") && errMsg.includes("exist")) {
         return NextResponse.json(
-          { error: "An account with this email already exists. Try signing in." },
+          { error: "An account with this phone number already exists. Try signing in." },
           { status: 409 }
         );
       }
       throw clerkErr;
     }
 
-    // Save customer profile with phone for future sign-in lookups
     await upsertCustomer(user.id, {
-      email: effectiveEmail,
+      email: "",
       firstName: firstName.trim(),
       phone,
       whatsappNumber: phone,
@@ -88,7 +84,6 @@ export async function POST(req: NextRequest) {
       notifications: [],
     });
 
-    // Create a sign-in token so the client can establish a Clerk session
     const { token } = await clerk.signInTokens.createSignInToken({
       userId: user.id,
       expiresInSeconds: 300,

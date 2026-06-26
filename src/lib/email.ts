@@ -239,52 +239,6 @@ export async function sendOrderConfirmation(order: Order): Promise<void> {
   ]);
 }
 
-// ── OTP email delivery ────────────────────────────────────────────────────────
-
-function buildOtpEmailHtml(code: string, locale: string): string {
-  const isAr = locale === "ar";
-  const dir = isAr ? "rtl" : "ltr";
-  return `<!DOCTYPE html><html dir="${dir}" lang="${isAr ? "ar" : "en"}">
-<head><meta charset="UTF-8"/></head>
-<body style="margin:0;padding:0;background:#FAFAF7;font-family:${isAr ? "sans-serif" : "Georgia,serif"};direction:${dir}">
-<table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;margin:0 auto;background:#fff;border:1px solid #EDE8DE">
-  <tr><td style="background:#0C0C0C;padding:24px 36px;text-align:center">
-    <span style="font-family:Georgia,serif;font-size:22px;letter-spacing:0.15em;color:#FAFAF7">JORREY</span>
-  </td></tr>
-  <tr><td style="padding:36px;text-align:center">
-    <p style="margin:0 0 8px;font-size:13px;color:#888;text-transform:uppercase;letter-spacing:0.15em">
-      ${isAr ? "رمز التحقق" : "Verification Code"}
-    </p>
-    <p style="margin:16px 0;font-size:40px;font-family:Georgia,serif;letter-spacing:0.25em;color:#0C0C0C;font-weight:bold">
-      ${code}
-    </p>
-    <p style="margin:0;font-size:13px;color:#888">
-      ${isAr ? "صالح لمدة 10 دقائق. لا تشاركه مع أحد." : "Valid for 10 minutes. Do not share this code."}
-    </p>
-  </td></tr>
-  <tr><td style="padding:20px 36px;border-top:1px solid #EDE8DE;text-align:center">
-    <p style="margin:0;font-size:11px;color:#bbb">
-      ${isAr ? "إذا لم تطلب هذا الرمز، تجاهل هذا البريد." : "If you didn't request this code, you can safely ignore this email."}
-    </p>
-  </td></tr>
-</table></body></html>`;
-}
-
-export async function sendOtpEmail(to: string, code: string, locale: string): Promise<boolean> {
-  if (!resend || !to) return false;
-  const isAr = locale === "ar";
-  const subject = isAr
-    ? "رمز التحقق الخاص بك في جوري"
-    : "Your Jorrey verification code";
-  try {
-    await resend.emails.send({ from: FROM, to, subject, html: buildOtpEmailHtml(code, locale) });
-    return true;
-  } catch (e) {
-    console.error("[OTP email] Resend error:", e);
-    return false;
-  }
-}
-
 // ── OTP for phone/WhatsApp verification ──────────────────────────────────────
 
 interface OtpRecord { code: string; expiresAt: number; attempts: number }

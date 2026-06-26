@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useSignIn, useUser, useClerk } from "@clerk/nextjs";
+import { useSignIn, useSignUp, useUser, useClerk } from "@clerk/nextjs";
 import {
   X,
   LogOut,
@@ -44,6 +44,7 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
 
   const { user, isLoaded: userLoaded } = useUser();
   const { signIn } = useSignIn();
+  const { signUp } = useSignUp();
   const { signOut, setActive } = useClerk();
   const { addItem } = useCart();
   const {
@@ -59,8 +60,10 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
 
   // ── Phone-first auth state ──────────────────────────────────
   // step: "phone" → enter number; "otp" → enter WhatsApp code;
-  //       "register" → new user, enter name/email; "signing_in" → establishing session
-  type AuthStep = "phone" | "otp" | "register" | "signing_in";
+  //       "register" → new user, enter name/email;
+  //       "email-verify" → Clerk email OTP for users who provided email;
+  //       "signing_in" → establishing session
+  type AuthStep = "phone" | "otp" | "register" | "email-verify" | "signing_in";
   const [authStep, setAuthStep] = useState<AuthStep>("phone");
   const [authPhone, setAuthPhone] = useState("");
   const [authPhoneError, setAuthPhoneError] = useState("");
@@ -68,9 +71,7 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
   const [verifiedToken, setVerifiedToken] = useState("");
-  const [authEmail, setAuthEmail] = useState("");
-  const [otpMethod, setOtpMethod] = useState<"whatsapp" | "email" | "both">("whatsapp");
-  const [showEmailField, setShowEmailField] = useState(false);
+  const [clerkEmailCode, setClerkEmailCode] = useState("");
   // Registration extras (only for new users)
   const [regFirstName, setRegFirstName] = useState("");
   const [regEmail, setRegEmail] = useState("");
@@ -180,19 +181,13 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
       const res = await fetch("/api/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: normalisePhone(authPhone), email: authEmail.trim() || undefined, locale }),
+        body: JSON.stringify({ phone: normalisePhone(authPhone), locale }),
       });
       const data = await res.json();
       if (!res.ok) {
-        if (data.needsEmail) {
-          setShowEmailField(true);
-          setAuthError(data.error ?? (isRTL ? "أضف بريدك الإلكتروني أدناه" : "Add your email address below"));
-        } else {
-          setAuthError(data.error ?? "Could not send code.");
-        }
+        setAuthError(data.error ?? "Could not send code.");
         return;
       }
-      setOtpMethod(data.method ?? "whatsapp");
       setAuthStep("otp");
     } catch {
       setAuthError("Network error. Please try again.");
@@ -258,35 +253,101 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
     }
     setAuthError("");
     setAuthLoading(true);
+
+    const email = regEmail.trim();
+
     try {
-      const res = await fetch("/api/auth/phone-register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          verifiedToken,
-          firstName: regFirstName.trim(),
-          email: regEmail.trim() || undefined,
-        }),
-      });
-      if (!res.ok) {
-        const { error } = await res.json();
-        if (error === "already_exists") {
-          setAuthError(t("account_exists_error"));
-        } else if (error === "Token expired. Please restart verification.") {
-          // Token expired — restart
-          setAuthStep("phone");
-          setAuthOtp("");
-          setVerifiedToken("");
-          setAuthError(isRTL ? "انتهت صلاحية الجلسة. ابدأ من جديد." : "Session expired. Please start over.");
-        } else {
-          setAuthError(error ?? "Registration failed.");
+      if (email) {
+        // Email provided → use Clerk's native signUp so Clerk sends the verification code
+        if (!signUp) throw new Error("signUp not ready");
+        const { error: createErr } = await signUp.create({ emailAddress: email, firstName: regFirstName.trim() });
+        if (createErr) throw new Error(createErr.message ?? "clerk create failed");
+        const { error: sendErr } = await signUp.verifications.sendEmailCode();
+        if (sendErr) throw new Error(sendErr.message ?? "clerk send email failed");
+        setAuthStep("email-verify");
+      } else {
+        // Phone-only → server creates Clerk account with phone as identifier
+        const res = await fetch("/api/auth/phone-register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ verifiedToken, firstName: regFirstName.trim() }),
+        });
+        if (!res.ok) {
+          const { error } = await res.json();
+          if (error === "already_exists") {
+            setAuthError(t("account_exists_error"));
+          } else if (error === "Token expired. Please restart verification.") {
+            setAuthStep("phone");
+            setAuthOtp("");
+            setVerifiedToken("");
+            setAuthError(isRTL ? "انتهت صلاحية الجلسة. ابدأ من جديد." : "Session expired. Please start over.");
+          } else {
+            setAuthError(error ?? "Registration failed.");
+          }
+          return;
         }
+        const { token } = await res.json();
+        await clerkSignInWithToken(token);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("email") && msg.includes("exist")) {
+        setAuthError(isRTL ? "يوجد حساب بهذا البريد. جرّب تسجيل الدخول." : "An account with this email already exists. Try signing in.");
+      } else {
+        setAuthError(isRTL ? "فشل إنشاء الحساب. حاول مرة أخرى." : "Registration failed. Please try again.");
+      }
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function handleClerkEmailVerify(e: React.FormEvent) {
+    e.preventDefault();
+    if (!clerkEmailCode || clerkEmailCode.length < 6) {
+      setAuthError(isRTL ? "أدخل الرمز المكون من 6 أرقام" : "Enter the 6-digit code.");
+      return;
+    }
+    if (!signUp) return;
+    setAuthError("");
+    setAuthLoading(true);
+    try {
+      const { error: verifyErr } = await signUp.verifications.verifyEmailCode({ code: clerkEmailCode });
+      if (verifyErr) {
+        setAuthError(isRTL ? "رمز غير صحيح أو منتهي الصلاحية." : "Incorrect or expired code.");
         return;
       }
-      const { token } = await res.json();
-      await clerkSignInWithToken(token);
+      if (signUp.status === "complete" && signUp.createdSessionId) {
+        setAuthStep("signing_in");
+        await setActive({ session: signUp.createdSessionId });
+        // Create customer profile in Blob store so phone-based sign-in lookups work
+        await fetch("/api/auth/init-profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone: normalisePhone(authPhone),
+            firstName: regFirstName.trim(),
+            email: regEmail.trim(),
+          }),
+        });
+      } else {
+        setAuthError(isRTL ? "رمز غير صحيح أو منتهي الصلاحية." : "Incorrect or expired code.");
+      }
     } catch {
-      setAuthError("Network error. Please try again.");
+      setAuthError(isRTL ? "رمز غير صحيح. حاول مرة أخرى." : "Incorrect code. Please try again.");
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function handleResendClerkEmail() {
+    if (!signUp) return;
+    setAuthError("");
+    setAuthLoading(true);
+    try {
+      const { error } = await signUp.verifications.sendEmailCode();
+      if (error) setAuthError(isRTL ? "تعذّر إعادة الإرسال." : "Could not resend. Please try again.");
+    } catch {
+      setAuthError(isRTL ? "تعذّر إعادة الإرسال." : "Could not resend. Please try again.");
     } finally {
       setAuthLoading(false);
     }
@@ -315,14 +376,11 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
     setAuthError("");
     setAuthLoading(true);
     try {
-      const res = await fetch("/api/auth/send-otp", {
+      await fetch("/api/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: normalisePhone(authPhone), email: authEmail.trim() || undefined, locale }),
+        body: JSON.stringify({ phone: normalisePhone(authPhone), locale }),
       });
-      const data = await res.json();
-      if (res.ok) setOtpMethod(data.method ?? "whatsapp");
-
     } finally {
       setAuthLoading(false);
     }
@@ -436,9 +494,7 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
     setAuthOtp("");
     setAuthError("");
     setVerifiedToken("");
-    setAuthEmail("");
-    setOtpMethod("whatsapp");
-    setShowEmailField(false);
+    setClerkEmailCode("");
     setRegFirstName("");
     setRegEmail("");
     setProfileError("");
@@ -1158,22 +1214,6 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
                       {authPhoneError && <p className="text-xs text-red-500">{authPhoneError}</p>}
                     </div>
 
-                    {/* Email field — always shown; sent in parallel with WhatsApp when provided */}
-                    <div className="space-y-1">
-                      <Label className="text-[10px] tracking-widest uppercase text-gray-400">
-                        {t("email_for_otp")}
-                      </Label>
-                      <Input
-                        type="email"
-                        placeholder="you@example.com"
-                        value={authEmail}
-                        onChange={(e) => setAuthEmail(e.target.value)}
-                        dir="ltr"
-                        className={inp}
-                      />
-                      <p className="text-[10px] text-gray-400">{t("email_for_otp_hint")}</p>
-                    </div>
-
                     {authError && <p className="text-xs text-red-500 bg-red-50 px-3 py-2">{authError}</p>}
                     <Button
                       type="submit"
@@ -1194,11 +1234,7 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
                       </div>
                       <p className="text-sm font-medium text-jorrey-black">{t("verify_phone_title")}</p>
                       <p className="text-xs text-gray-400 mt-1">
-                        {otpMethod === "both"
-                          ? t("code_sent_both").replace("{phone}", authPhone).replace("{email}", authEmail)
-                          : otpMethod === "email"
-                            ? t("code_sent_email").replace("{email}", authEmail)
-                            : t("code_sent").replace("{phone}", authPhone)}
+                        {t("code_sent").replace("{phone}", authPhone)}
                       </p>
                     </div>
                     <Input
@@ -1278,6 +1314,57 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
                     >
                       {t("back")}
                     </button>
+                  </form>
+                )}
+
+                {/* ── Step: Clerk email verification (new users with email) ── */}
+                {authStep === "email-verify" && (
+                  <form onSubmit={handleClerkEmailVerify} className="space-y-4">
+                    <div className="text-center pb-1">
+                      <div className="w-10 h-10 bg-jorrey-beige rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Phone size={18} className="text-jorrey-black" />
+                      </div>
+                      <p className="text-sm font-medium text-jorrey-black">{t("verify_title")}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {t("verify_desc").replace("{email}", regEmail)}
+                      </p>
+                    </div>
+                    <Input
+                      placeholder={t("verify_placeholder")}
+                      value={clerkEmailCode}
+                      onChange={(e) => setClerkEmailCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      required
+                      dir="ltr"
+                      className={cn(inp, "text-center tracking-widest font-mono text-lg")}
+                      maxLength={6}
+                      inputMode="numeric"
+                      autoFocus
+                    />
+                    {authError && <p className="text-xs text-red-500 bg-red-50 px-3 py-2">{authError}</p>}
+                    <Button
+                      type="submit"
+                      disabled={authLoading || clerkEmailCode.length < 6}
+                      className="w-full rounded-none bg-jorrey-black hover:bg-jorrey-gold hover:text-jorrey-black text-white text-xs tracking-widest uppercase font-semibold py-5 transition-colors"
+                    >
+                      {authLoading ? t("verifying") : t("verify_btn")}
+                    </Button>
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => { setAuthStep("register"); setClerkEmailCode(""); setAuthError(""); }}
+                        className="text-[10px] text-gray-400 hover:text-jorrey-black transition-colors"
+                      >
+                        {t("back")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleResendClerkEmail}
+                        disabled={authLoading}
+                        className="text-[10px] text-gray-400 hover:text-jorrey-black transition-colors"
+                      >
+                        {authLoading ? "…" : t("resend_code")}
+                      </button>
+                    </div>
                   </form>
                 )}
               </div>
