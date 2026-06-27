@@ -204,20 +204,28 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
       if (isEmailIdentifier(val)) {
         // ── EMAIL PATH: use Clerk's native email verification ──
         if (!signUp) throw new Error("signUp not ready");
+        console.log("[auth] signUp.create →", val);
         const { error: createErr } = await signUp.create({ emailAddress: val });
+        console.log("[auth] signUp.create result — error:", createErr, "status:", signUp.status, "isTransferable:", (signUp as any).isTransferable);
         if (createErr) throw createErr;
 
         if ((signUp as any).isTransferable) {
           // Existing user — switch to sign-in flow
           if (!signIn) throw new Error("signIn not ready");
+          console.log("[auth] transferable → signIn.create");
           const { error: siErr } = await (signIn as any).create({ identifier: val });
+          console.log("[auth] signIn.create result — error:", siErr, "status:", (signIn as any).status);
           if (siErr) throw siErr;
+          console.log("[auth] emailCode.sendCode →");
           const { error: sendErr } = await (signIn as any).emailCode.sendCode();
+          console.log("[auth] emailCode.sendCode result — error:", sendErr);
           if (sendErr) throw sendErr;
           setAuthEmailFlow("signin");
         } else {
           // New user — sign-up flow
+          console.log("[auth] new user → verifications.sendEmailCode");
           const { error: sendErr } = await signUp.verifications.sendEmailCode();
+          console.log("[auth] verifications.sendEmailCode result — error:", sendErr);
           if (sendErr) throw sendErr;
           setAuthEmailFlow("signup");
         }
@@ -237,6 +245,7 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
         setAuthStep("otp");
       }
     } catch (err: unknown) {
+      console.error("[auth] handleSendOtp error:", err);
       const msg = (err as any)?.message ?? (err as any)?.longMessage ?? "";
       if (msg.toLowerCase().includes("exist") || msg.toLowerCase().includes("taken")) {
         setAuthError(isRTL ? "يوجد حساب بهذا البريد. جرّب تسجيل الدخول." : "An account with this email already exists.");
