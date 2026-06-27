@@ -8,6 +8,7 @@ import {
   User as UserIcon,
   Check,
   Phone,
+  AtSign,
   MapPin,
   Heart,
   Bell,
@@ -58,21 +59,25 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
     markAllRead,
   } = useUserLists();
 
-  // ── Phone-first auth state ──────────────────────────────────
-  // step: "phone" → enter number; "otp" → enter WhatsApp code;
-  //       "register" → new user, enter name/email;
-  //       "email-verify" → Clerk email OTP for users who provided email;
+  // ── Identifier-first auth state ─────────────────────────────
+  // step: "phone" → enter phone or email; "otp" → enter WhatsApp code (phone path);
+  //       "register" → new user (phone path), enter name/email;
+  //       "email-verify" → Clerk email OTP;
   //       "signing_in" → establishing session
   type AuthStep = "phone" | "otp" | "register" | "email-verify" | "signing_in";
   const [authStep, setAuthStep] = useState<AuthStep>("phone");
-  const [authPhone, setAuthPhone] = useState("");
-  const [authPhoneError, setAuthPhoneError] = useState("");
+  // authIdentifier holds whatever the customer typed: a phone number or email address
+  const [authIdentifier, setAuthIdentifier] = useState("");
+  const [authIdentifierError, setAuthIdentifierError] = useState("");
   const [authOtp, setAuthOtp] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
   const [verifiedToken, setVerifiedToken] = useState("");
   const [clerkEmailCode, setClerkEmailCode] = useState("");
-  // Registration extras (only for new users)
+  // "signup"|"signin" when in the direct-email path (step 1 was an email);
+  // null when in the phone-OTP path (email-verify reached via register step)
+  const [authEmailFlow, setAuthEmailFlow] = useState<"signup" | "signin" | null>(null);
+  // Registration extras (only for phone-path new users)
   const [regFirstName, setRegFirstName] = useState("");
   const [regEmail, setRegEmail] = useState("");
 
@@ -157,40 +162,87 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
     }
   }, [accountTab, unreadNotifications, markAllRead]);
 
-  function normalisePhone(raw: string): string {
-    // Ensure E.164: strip spaces, add + if missing
-    const stripped = raw.replace(/\s/g, "");
-    return stripped.startsWith("+") ? stripped : `+${stripped}`;
+  function isEmailIdentifier(val: string): boolean {
+    return val.includes("@") && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
   }
 
-  function validatePhone(raw: string): string {
-    const digits = raw.replace(/\D/g, "");
-    if (!raw.trim()) return t("phone_label").replace(" *", "") + " " + (isRTL ? "مطلوب" : "is required");
-    if (digits.length < 7) return isRTL ? "رقم هاتف غير صالح" : "Invalid phone number";
+  function looksLikeEmail(val: string): boolean {
+    return val.includes("@");
+  }
+
+  function normalisePhone(raw: string): string {
+    let s = raw.replace(/[\s\-().]/g, "");
+    if (s.startsWith("00")) s = "+" + s.slice(2);
+    if (!s.startsWith("+")) s = "+" + s;
+    if (/^\+0[7-9]\d{8,9}$/.test(s)) s = "+964" + s.slice(2);
+    return s;
+  }
+
+  function validateIdentifier(raw: string): string {
+    const val = raw.trim();
+    if (!val) return isRTL ? "مطلوب" : "This field is required";
+    if (looksLikeEmail(val)) {
+      if (!isEmailIdentifier(val)) return isRTL ? "يرجى إدخال بريد إلكتروني صحيح" : "Please enter a valid email address";
+    } else {
+      const digits = val.replace(/\D/g, "");
+      if (digits.length < 7) return isRTL ? "يرجى إدخال رقم هاتف صحيح" : "Please enter a valid phone number";
+    }
     return "";
   }
 
   async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault();
-    const phoneErr = validatePhone(authPhone);
-    if (phoneErr) { setAuthPhoneError(phoneErr); return; }
-    setAuthPhoneError("");
+    const err = validateIdentifier(authIdentifier);
+    if (err) { setAuthIdentifierError(err); return; }
+    setAuthIdentifierError("");
     setAuthError("");
     setAuthLoading(true);
+
+    const val = authIdentifier.trim();
+
     try {
-      const res = await fetch("/api/auth/send-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: normalisePhone(authPhone), locale }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setAuthError(data.error ?? "Could not send code.");
-        return;
+      if (isEmailIdentifier(val)) {
+        // ── EMAIL PATH: use Clerk's native email verification ──
+        if (!signUp) throw new Error("signUp not ready");
+        const { error: createErr } = await signUp.create({ emailAddress: val });
+        if (createErr) throw createErr;
+
+        if ((signUp as any).isTransferable) {
+          // Existing user — switch to sign-in flow
+          if (!signIn) throw new Error("signIn not ready");
+          const { error: siErr } = await (signIn as any).create({ identifier: val });
+          if (siErr) throw siErr;
+          const { error: sendErr } = await (signIn as any).emailCode.sendCode();
+          if (sendErr) throw sendErr;
+          setAuthEmailFlow("signin");
+        } else {
+          // New user — sign-up flow
+          const { error: sendErr } = await signUp.verifications.sendEmailCode();
+          if (sendErr) throw sendErr;
+          setAuthEmailFlow("signup");
+        }
+        setAuthStep("email-verify");
+      } else {
+        // ── PHONE PATH: WhatsApp OTP ──
+        const res = await fetch("/api/auth/send-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: normalisePhone(val), locale }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setAuthError(data.error ?? "Could not send code.");
+          return;
+        }
+        setAuthStep("otp");
       }
-      setAuthStep("otp");
-    } catch {
-      setAuthError("Network error. Please try again.");
+    } catch (err: unknown) {
+      const msg = (err as any)?.message ?? (err as any)?.longMessage ?? "";
+      if (msg.toLowerCase().includes("exist") || msg.toLowerCase().includes("taken")) {
+        setAuthError(isRTL ? "يوجد حساب بهذا البريد. جرّب تسجيل الدخول." : "An account with this email already exists.");
+      } else {
+        setAuthError(isRTL ? "تعذّر إرسال الرمز. حاول مرة أخرى." : "Could not send code. Please try again.");
+      }
     } finally {
       setAuthLoading(false);
     }
@@ -205,7 +257,7 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
     setAuthError("");
     setAuthLoading(true);
     try {
-      const phone = normalisePhone(authPhone);
+      const phone = normalisePhone(authIdentifier);
       // Exchange OTP for a short-lived verified-phone token
       const verifyRes = await fetch("/api/auth/phone-verify", {
         method: "POST",
@@ -307,30 +359,47 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
       setAuthError(isRTL ? "أدخل الرمز المكون من 6 أرقام" : "Enter the 6-digit code.");
       return;
     }
-    if (!signUp) return;
     setAuthError("");
     setAuthLoading(true);
     try {
-      const { error: verifyErr } = await signUp.verifications.verifyEmailCode({ code: clerkEmailCode });
-      if (verifyErr) {
-        setAuthError(isRTL ? "رمز غير صحيح أو منتهي الصلاحية." : "Incorrect or expired code.");
-        return;
-      }
-      if (signUp.status === "complete" && signUp.createdSessionId) {
-        setAuthStep("signing_in");
-        await setActive({ session: signUp.createdSessionId });
-        // Create customer profile in Blob store so phone-based sign-in lookups work
-        await fetch("/api/auth/init-profile", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            phone: normalisePhone(authPhone),
-            firstName: regFirstName.trim(),
-            email: regEmail.trim(),
-          }),
-        });
+      if (authEmailFlow === "signin") {
+        // Existing user, direct-email path — verify via signIn
+        const { error: verifyErr } = await (signIn as any).emailCode.verifyCode({ code: clerkEmailCode });
+        if (verifyErr) {
+          setAuthError(isRTL ? "رمز غير صحيح أو منتهي الصلاحية." : "Incorrect or expired code.");
+          return;
+        }
+        if ((signIn as any).status === "complete" && (signIn as any).createdSessionId) {
+          setAuthStep("signing_in");
+          await setActive({ session: (signIn as any).createdSessionId });
+          // Existing user — profile already exists in Blob store, no need to re-create
+        } else {
+          setAuthError(isRTL ? "فشل تسجيل الدخول. حاول مرة أخرى." : "Sign-in failed. Please try again.");
+        }
       } else {
-        setAuthError(isRTL ? "رمز غير صحيح أو منتهي الصلاحية." : "Incorrect or expired code.");
+        // New user — either direct-email signup or phone-path register step
+        if (!signUp) return;
+        const { error: verifyErr } = await signUp.verifications.verifyEmailCode({ code: clerkEmailCode });
+        if (verifyErr) {
+          setAuthError(isRTL ? "رمز غير صحيح أو منتهي الصلاحية." : "Incorrect or expired code.");
+          return;
+        }
+        if (signUp.status === "complete" && signUp.createdSessionId) {
+          setAuthStep("signing_in");
+          await setActive({ session: signUp.createdSessionId });
+          // Create customer profile in Blob store so phone-based sign-in lookups work
+          // authEmailFlow === "signup" → came from step 1 email, no phone available
+          // authEmailFlow === null    → came from register step, authIdentifier is the phone
+          const phone = authEmailFlow === "signup" ? "" : normalisePhone(authIdentifier);
+          const email = authEmailFlow === "signup" ? authIdentifier.trim() : regEmail.trim();
+          await fetch("/api/auth/init-profile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone, firstName: regFirstName.trim(), email }),
+          });
+        } else {
+          setAuthError(isRTL ? "رمز غير صحيح أو منتهي الصلاحية." : "Incorrect or expired code.");
+        }
       }
     } catch {
       setAuthError(isRTL ? "رمز غير صحيح. حاول مرة أخرى." : "Incorrect code. Please try again.");
@@ -340,12 +409,17 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
   }
 
   async function handleResendClerkEmail() {
-    if (!signUp) return;
     setAuthError("");
     setAuthLoading(true);
     try {
-      const { error } = await signUp.verifications.sendEmailCode();
-      if (error) setAuthError(isRTL ? "تعذّر إعادة الإرسال." : "Could not resend. Please try again.");
+      if (authEmailFlow === "signin") {
+        const { error } = await (signIn as any).emailCode.sendCode();
+        if (error) throw error;
+      } else {
+        if (!signUp) return;
+        const { error } = await signUp.verifications.sendEmailCode();
+        if (error) throw error;
+      }
     } catch {
       setAuthError(isRTL ? "تعذّر إعادة الإرسال." : "Could not resend. Please try again.");
     } finally {
@@ -379,7 +453,7 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
       await fetch("/api/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: normalisePhone(authPhone), locale }),
+        body: JSON.stringify({ phone: normalisePhone(authIdentifier), locale }),
       });
     } finally {
       setAuthLoading(false);
@@ -489,8 +563,9 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
 
   function handleClose() {
     setAuthStep("phone");
-    setAuthPhone("");
-    setAuthPhoneError("");
+    setAuthIdentifier("");
+    setAuthIdentifierError("");
+    setAuthEmailFlow(null);
     setAuthOtp("");
     setAuthError("");
     setVerifiedToken("");
@@ -1193,25 +1268,24 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
                   <form onSubmit={handleSendOtp} className="space-y-4">
                     <div className="text-center pb-2">
                       <div className="w-11 h-11 bg-jorrey-beige rounded-full flex items-center justify-center mx-auto mb-3">
-                        <Phone size={20} className="text-jorrey-black" />
+                        <AtSign size={20} className="text-jorrey-black" />
                       </div>
                       <p className="text-xs text-gray-400">{t("phone_auth_hint")}</p>
                     </div>
                     <div className="space-y-1">
                       <div className="relative">
-                        <Phone size={13} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                        <AtSign size={13} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                         <Input
-                          type="tel"
-                          placeholder={isRTL ? "+٩٦٤ ٧٧٠ ٠٠٠ ٠٠٠٠" : "+964 770 000 0000"}
-                          value={authPhone}
-                          onChange={(e) => { setAuthPhone(e.target.value); setAuthPhoneError(""); }}
+                          type="text"
+                          placeholder={isRTL ? "you@example.com أو +٩٦٤ ٧٧٠..." : "you@example.com or +964 770…"}
+                          value={authIdentifier}
+                          onChange={(e) => { setAuthIdentifier(e.target.value); setAuthIdentifierError(""); }}
                           dir="ltr"
-                          inputMode="tel"
                           className={cn(inp, "ps-9")}
                           autoFocus
                         />
                       </div>
-                      {authPhoneError && <p className="text-xs text-red-500">{authPhoneError}</p>}
+                      {authIdentifierError && <p className="text-xs text-red-500">{authIdentifierError}</p>}
                     </div>
 
                     {authError && <p className="text-xs text-red-500 bg-red-50 px-3 py-2">{authError}</p>}
@@ -1234,7 +1308,7 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
                       </div>
                       <p className="text-sm font-medium text-jorrey-black">{t("verify_phone_title")}</p>
                       <p className="text-xs text-gray-400 mt-1">
-                        {t("code_sent").replace("{phone}", authPhone)}
+                        {t("code_sent").replace("{phone}", authIdentifier)}
                       </p>
                     </div>
                     <Input
@@ -1281,7 +1355,7 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
                   <form onSubmit={handleRegister} className="space-y-4">
                     <p className="text-xs text-gray-400 bg-gray-50 px-3 py-2.5 leading-relaxed">
                       {t("no_account_found")}{" "}
-                      <span className="text-jorrey-black font-medium">{authPhone}</span>
+                      <span className="text-jorrey-black font-medium">{authIdentifier}</span>
                     </p>
                     <p className="text-[10px] tracking-widest uppercase text-gray-400">{t("complete_registration")}</p>
                     <Input
@@ -1317,16 +1391,16 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
                   </form>
                 )}
 
-                {/* ── Step: Clerk email verification (new users with email) ── */}
+                {/* ── Step: Clerk email verification ── */}
                 {authStep === "email-verify" && (
                   <form onSubmit={handleClerkEmailVerify} className="space-y-4">
                     <div className="text-center pb-1">
                       <div className="w-10 h-10 bg-jorrey-beige rounded-full flex items-center justify-center mx-auto mb-3">
-                        <Phone size={18} className="text-jorrey-black" />
+                        <AtSign size={18} className="text-jorrey-black" />
                       </div>
                       <p className="text-sm font-medium text-jorrey-black">{t("verify_title")}</p>
                       <p className="text-xs text-gray-400 mt-1">
-                        {t("verify_desc").replace("{email}", regEmail)}
+                        {t("verify_desc").replace("{email}", authEmailFlow ? authIdentifier : regEmail)}
                       </p>
                     </div>
                     <Input
@@ -1351,7 +1425,17 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
                     <div className="flex items-center justify-between">
                       <button
                         type="button"
-                        onClick={() => { setAuthStep("register"); setClerkEmailCode(""); setAuthError(""); }}
+                        onClick={() => {
+                          setClerkEmailCode("");
+                          setAuthError("");
+                          // Direct-email path → back to identifier step; phone-path → back to register
+                          if (authEmailFlow !== null) {
+                            setAuthStep("phone");
+                            setAuthEmailFlow(null);
+                          } else {
+                            setAuthStep("register");
+                          }
+                        }}
                         className="text-[10px] text-gray-400 hover:text-jorrey-black transition-colors"
                       >
                         {t("back")}

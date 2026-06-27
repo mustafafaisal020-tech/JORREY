@@ -23,15 +23,16 @@ export async function POST(req: NextRequest) {
       email?: string;
     };
 
-    if (!phone || !firstName?.trim()) {
+    if (!firstName?.trim()) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const resolvedPhone = phone?.trim() ?? "";
     await upsertCustomer(userId, {
       email: email?.trim() ?? "",
       firstName: firstName.trim(),
-      phone,
-      whatsappNumber: phone,
+      phone: resolvedPhone,
+      whatsappNumber: resolvedPhone,
       watchlist: [],
       favorites: [],
       notifications: [],
