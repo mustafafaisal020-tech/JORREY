@@ -222,11 +222,16 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
           if (sendErr) throw sendErr;
           setAuthEmailFlow("signin");
         } else {
-          // New user — sign-up flow
-          console.log("[auth] new user → verifications.sendEmailCode");
-          const { error: sendErr } = await signUp.verifications.sendEmailCode();
-          console.log("[auth] verifications.sendEmailCode result — error:", sendErr);
-          if (sendErr) throw sendErr;
+          // New user — sign-up flow.
+          // create() may have already initiated email verification (auto-send in production).
+          // Only call sendEmailCode() if no verification strategy is set yet.
+          const alreadySent = !!signUp.verifications.emailAddress.strategy;
+          console.log("[auth] new user — alreadySent:", alreadySent, "emailVerif:", signUp.verifications.emailAddress);
+          if (!alreadySent) {
+            const { error: sendErr } = await signUp.verifications.sendEmailCode();
+            console.log("[auth] verifications.sendEmailCode result — error:", sendErr);
+            if (sendErr) throw sendErr;
+          }
           setAuthEmailFlow("signup");
         }
         setAuthStep("email-verify");
@@ -388,16 +393,21 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
       } else {
         // New user — either direct-email signup or phone-path register step
         if (!signUp) return;
+        console.log("[auth] verifyEmailCode → code:", clerkEmailCode);
         const { error: verifyErr } = await signUp.verifications.verifyEmailCode({ code: clerkEmailCode });
+        console.log("[auth] verifyEmailCode result — error:", verifyErr, "status:", signUp.status);
         if (verifyErr) {
           setAuthError(isRTL ? "رمز غير صحيح أو منتهي الصلاحية." : "Incorrect or expired code.");
           return;
         }
-        if (signUp.status === "complete" && signUp.createdSessionId) {
+        if (signUp.status === "complete") {
           setAuthStep("signing_in");
-          await setActive({ session: signUp.createdSessionId });
-          // Create customer profile in Blob store so phone-based sign-in lookups work
-          // authEmailFlow === "signup" → came from step 1 email, no phone available
+          // Future API: finalize() activates the session (replaces setActive)
+          const { error: finalizeErr } = await signUp.finalize();
+          console.log("[auth] finalize result — error:", finalizeErr);
+          if (finalizeErr) throw finalizeErr;
+          // Create customer profile in Blob store
+          // authEmailFlow === "signup" → came from step 1 email, no phone
           // authEmailFlow === null    → came from register step, authIdentifier is the phone
           const phone = authEmailFlow === "signup" ? "" : normalisePhone(authIdentifier);
           const email = authEmailFlow === "signup" ? authIdentifier.trim() : regEmail.trim();
@@ -407,6 +417,7 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
             body: JSON.stringify({ phone, firstName: regFirstName.trim(), email }),
           });
         } else {
+          console.log("[auth] signup not complete after verify, status:", signUp.status);
           setAuthError(isRTL ? "رمز غير صحيح أو منتهي الصلاحية." : "Incorrect or expired code.");
         }
       }
@@ -422,14 +433,19 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
     setAuthLoading(true);
     try {
       if (authEmailFlow === "signin") {
+        console.log("[auth] resend → signIn emailCode.sendCode");
         const { error } = await (signIn as any).emailCode.sendCode();
+        console.log("[auth] resend signIn result — error:", error);
         if (error) throw error;
       } else {
-        if (!signUp) return;
+        if (!signUp) { console.log("[auth] resend — signUp is null"); return; }
+        console.log("[auth] resend → signUp verifications.sendEmailCode, emailVerif:", signUp.verifications.emailAddress);
         const { error } = await signUp.verifications.sendEmailCode();
+        console.log("[auth] resend signUp result — error:", error);
         if (error) throw error;
       }
-    } catch {
+    } catch (err) {
+      console.error("[auth] resend error:", err);
       setAuthError(isRTL ? "تعذّر إعادة الإرسال." : "Could not resend. Please try again.");
     } finally {
       setAuthLoading(false);
