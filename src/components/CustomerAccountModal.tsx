@@ -395,14 +395,36 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
         if (!signUp) return;
         console.log("[auth] verifyEmailCode → code:", clerkEmailCode);
         const { error: verifyErr } = await signUp.verifications.verifyEmailCode({ code: clerkEmailCode });
-        console.log("[auth] verifyEmailCode result — error:", verifyErr, "status:", signUp.status);
+        console.log("[auth] verifyEmailCode result — error:", verifyErr, "status:", signUp.status, "missingFields:", signUp.missingFields);
         if (verifyErr) {
-          setAuthError(isRTL ? "رمز غير صحيح أو منتهي الصلاحية." : "Incorrect or expired code.");
-          return;
+          // "already_verified" means the code was correct on a previous attempt but we
+          // didn't advance because of missing_requirements — skip past verification.
+          const isAlreadyVerified = (verifyErr as any)?.code === "verification_already_verified"
+            || (verifyErr as any)?.errors?.[0]?.code === "verification_already_verified";
+          if (!isAlreadyVerified) {
+            setAuthError(isRTL ? "رمز غير صحيح أو منتهي الصلاحية." : "Incorrect or expired code.");
+            return;
+          }
+          console.log("[auth] already_verified — proceeding to satisfy missing fields");
         }
+
+        // Satisfy any required fields the production instance demands (e.g. first_name)
+        if (signUp.status === "missing_requirements" && signUp.missingFields.length > 0) {
+          console.log("[auth] missing fields:", signUp.missingFields);
+          const updates: Record<string, string> = {};
+          if (signUp.missingFields.includes("first_name")) {
+            // Use the name from the register step if available; else derive from email
+            updates.firstName = regFirstName.trim() || authIdentifier.split("@")[0];
+          }
+          if (Object.keys(updates).length > 0) {
+            const { error: updateErr } = await signUp.update(updates);
+            console.log("[auth] update result — error:", updateErr, "status:", signUp.status);
+            if (updateErr) throw updateErr;
+          }
+        }
+
         if (signUp.status === "complete") {
           setAuthStep("signing_in");
-          // Future API: finalize() activates the session (replaces setActive)
           const { error: finalizeErr } = await signUp.finalize();
           console.log("[auth] finalize result — error:", finalizeErr);
           if (finalizeErr) throw finalizeErr;
@@ -411,14 +433,15 @@ export default function CustomerAccountModal({ open, onClose }: Props) {
           // authEmailFlow === null    → came from register step, authIdentifier is the phone
           const phone = authEmailFlow === "signup" ? "" : normalisePhone(authIdentifier);
           const email = authEmailFlow === "signup" ? authIdentifier.trim() : regEmail.trim();
+          const firstName = regFirstName.trim() || authIdentifier.split("@")[0];
           await fetch("/api/auth/init-profile", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ phone, firstName: regFirstName.trim(), email }),
+            body: JSON.stringify({ phone, firstName, email }),
           });
         } else {
-          console.log("[auth] signup not complete after verify, status:", signUp.status);
-          setAuthError(isRTL ? "رمز غير صحيح أو منتهي الصلاحية." : "Incorrect or expired code.");
+          console.log("[auth] signup not complete after satisfying fields, status:", signUp.status, "missing:", signUp.missingFields);
+          setAuthError(isRTL ? "فشل إنشاء الحساب. حاول مرة أخرى." : "Could not complete sign-up. Please try again.");
         }
       }
     } catch {
