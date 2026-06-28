@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { getUserRole } from "@/lib/roles";
 import { notFound } from "next/navigation";
 import { getCustomPage } from "@/lib/pages";
 import { CustomPageEditor, PageMetadataEditor } from "@/components/admin/PageEditor";
@@ -6,6 +8,8 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 
 export default async function EditPagePage({ params }: { params: Promise<{ id: string }> }) {
+  const role = await getUserRole();
+  if (role !== "admin") redirect("/admin");
   const { id } = await params;
   const page = await getCustomPage(id);
   if (!page) notFound();

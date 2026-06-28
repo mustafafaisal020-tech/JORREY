@@ -1,9 +1,13 @@
+import { redirect } from "next/navigation";
+import { getUserRole } from "@/lib/roles";
 import { getCategories } from "@/lib/categories";
 import CategoryTable from "@/components/admin/CategoryTable";
 
 export const dynamic = "force-dynamic";
 
 export default async function CategoriesPage() {
+  const role = await getUserRole();
+  if (role !== "admin") redirect("/admin");
   const categories = await getCategories(true);
   return (
     <main className="p-8">

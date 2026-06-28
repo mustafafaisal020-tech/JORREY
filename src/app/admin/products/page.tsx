@@ -1,9 +1,14 @@
+import { redirect } from "next/navigation";
 import { getProducts } from "@/lib/products";
 import ProductTable from "@/components/admin/ProductTable";
+import { getUserRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProductsPage() {
+  const role = await getUserRole();
+  if (role !== "admin") redirect("/admin");
+
   const products = await getProducts();
 
   return (

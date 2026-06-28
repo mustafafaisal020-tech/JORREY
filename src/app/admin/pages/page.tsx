@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { getUserRole } from "@/lib/roles";
 import Link from "next/link";
 import { getHomeSections, getCustomPages, getLegalPages, seedLegalPages } from "@/lib/pages";
 import { HomeSectionManager, CustomPagesManager } from "@/components/admin/PageEditor";
@@ -7,6 +9,8 @@ import { Plus, FileText } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 export default async function PagesPage() {
+  const role = await getUserRole();
+  if (role !== "admin") redirect("/admin");
   await seedLegalPages();
 
   const [homeSections, legalPages, customPages] = await Promise.all([

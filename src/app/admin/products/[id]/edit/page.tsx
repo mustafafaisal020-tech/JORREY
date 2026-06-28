@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { getUserRole } from "@/lib/roles";
 import { notFound } from "next/navigation";
 import { getProduct } from "@/lib/products";
 import { getCategories } from "@/lib/categories";
@@ -10,6 +12,8 @@ export default async function EditProductPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const role = await getUserRole();
+  if (role !== "admin") redirect("/admin");
   const { id } = await params;
   const [product, categories] = await Promise.all([getProduct(id), getCategories(true)]);
   if (!product) notFound();

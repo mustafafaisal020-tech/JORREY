@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { getProducts, createProduct } from "@/lib/products";
+import { requireAdmin } from "@/lib/roles";
 
 export async function GET(req: NextRequest) {
   const { userId } = await auth();
@@ -17,6 +18,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   try {
     const body = await req.json();

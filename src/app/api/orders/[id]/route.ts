@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getOrder, updateOrderStatus } from "@/lib/orders";
 import { sendStatusUpdateNotification } from "@/lib/email";
 import { sendOrderPush } from "@/lib/push";
+import { getUserRole } from "@/lib/roles";
 import type { OrderStatus } from "@/lib/order-types";
 
 export const dynamic = "force-dynamic";
@@ -16,8 +17,10 @@ export async function GET(
   const { id } = await params;
   const order = await getOrder(id);
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  // Only owner or admin can view — for simplicity we check ownership
-  if (order.customerId && order.customerId !== userId) {
+  // Staff (admin/employee) can view any order; customers can only view their own
+  const role = await getUserRole();
+  const isStaff = role === "admin" || role === "employee";
+  if (!isStaff && order.customerId && order.customerId !== userId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   return NextResponse.json(order);

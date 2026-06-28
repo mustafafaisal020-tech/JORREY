@@ -1,9 +1,13 @@
+import { redirect } from "next/navigation";
+import { getUserRole } from "@/lib/roles";
 import { getArchivedProducts } from "@/lib/products";
 import ArchiveTable from "@/components/admin/ArchiveTable";
 
 export const dynamic = "force-dynamic";
 
 export default async function ArchivePage() {
+  const role = await getUserRole();
+  if (role !== "admin") redirect("/admin");
   const products = await getArchivedProducts();
   return (
     <main className="p-8">

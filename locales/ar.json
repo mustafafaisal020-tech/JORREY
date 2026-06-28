@@ -285,5 +285,30 @@
         "creams": "كريمات",
         "skin_brightening": "مفتح البشرة",
         "spf": "واقي الشمس"
+    },
+    "admin": {
+        "team_title": "الفريق",
+        "team_subtitle": "إدارة حسابات المسؤولين والموظفين",
+        "invite_member": "إضافة عضو",
+        "member_name": "الاسم",
+        "member_email": "البريد الإلكتروني",
+        "member_password": "كلمة المرور المؤقتة",
+        "member_role": "الدور",
+        "role_admin": "مسؤول",
+        "role_employee": "موظف",
+        "status_active": "نشط",
+        "status_inactive": "معطّل",
+        "action_deactivate": "تعطيل",
+        "action_reactivate": "تفعيل",
+        "action_change_role": "تغيير الدور",
+        "confirm_deactivate": "تعطيل هذا العضو؟",
+        "adding": "جارٍ الإضافة…",
+        "add_member": "إضافة عضو",
+        "no_members": "لا يوجد أعضاء في الفريق بعد.",
+        "error_create": "فشل إضافة العضو.",
+        "error_update": "فشل تحديث بيانات العضو.",
+        "joined": "انضم",
+        "you": "أنت",
+        "team_nav": "الفريق"
     }
 }

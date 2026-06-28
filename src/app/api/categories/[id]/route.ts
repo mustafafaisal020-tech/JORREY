@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { getCategory, updateCategory, deleteCategory } from "@/lib/categories";
+import { requireAdmin } from "@/lib/roles";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -12,6 +13,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await requireAdmin();
+  if (denied) return denied;
   const { id } = await params;
   try {
     const body = await req.json();
@@ -26,6 +29,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await requireAdmin();
+  if (denied) return denied;
   const { id } = await params;
   const ok = await deleteCategory(id);
   if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });

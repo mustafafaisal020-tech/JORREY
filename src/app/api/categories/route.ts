@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { getCategories, createCategory, reorderCategories } from "@/lib/categories";
+import { requireAdmin } from "@/lib/roles";
 
 export async function GET() {
   const categories = await getCategories(true);
@@ -10,6 +11,8 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await requireAdmin();
+  if (denied) return denied;
   try {
     const body = await req.json();
     if (body._action === "reorder") {

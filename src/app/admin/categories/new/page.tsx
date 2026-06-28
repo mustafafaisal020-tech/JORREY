@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { getUserRole } from "@/lib/roles";
 import CategoryForm from "@/components/admin/CategoryForm";
 
 export default function NewCategoryPage() {

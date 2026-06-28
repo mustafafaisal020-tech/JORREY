@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { getUserRole } from "@/lib/roles";
 import { getSettings } from "@/lib/settings";
 import { getCustomPages } from "@/lib/pages";
 import SettingsForm from "@/components/admin/SettingsForm";
@@ -5,6 +7,8 @@ import SettingsForm from "@/components/admin/SettingsForm";
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
+  const role = await getUserRole();
+  if (role !== "admin") redirect("/admin");
   const [settings, availablePages] = await Promise.all([
     getSettings(),
     getCustomPages(true),

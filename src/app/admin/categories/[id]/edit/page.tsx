@@ -1,8 +1,12 @@
+import { redirect } from "next/navigation";
+import { getUserRole } from "@/lib/roles";
 import { notFound } from "next/navigation";
 import { getCategory } from "@/lib/categories";
 import CategoryForm from "@/components/admin/CategoryForm";
 
 export default async function EditCategoryPage({ params }: { params: Promise<{ id: string }> }) {
+  const role = await getUserRole();
+  if (role !== "admin") redirect("/admin");
   const { id } = await params;
   const category = await getCategory(id);
   if (!category) notFound();

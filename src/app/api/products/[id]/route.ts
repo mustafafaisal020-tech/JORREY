@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { getProduct, updateProduct, archiveProduct } from "@/lib/products";
+import { requireAdmin } from "@/lib/roles";
 import { getWatchersForProduct, addNotification } from "@/lib/customers";
 import {
   sendEmail,
@@ -31,6 +32,8 @@ export async function PUT(
 ) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const { id } = await params;
   try {
@@ -58,6 +61,8 @@ export async function DELETE(
 ) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const { id } = await params;
   const ok = await archiveProduct(id, userId);

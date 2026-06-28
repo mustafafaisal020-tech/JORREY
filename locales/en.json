@@ -285,5 +285,30 @@
         "creams": "Creams",
         "skin_brightening": "Skin Brightening",
         "spf": "SPF"
+    },
+    "admin": {
+        "team_title": "Team",
+        "team_subtitle": "Manage admin and employee accounts",
+        "invite_member": "Add Member",
+        "member_name": "Name",
+        "member_email": "Email",
+        "member_password": "Temporary Password",
+        "member_role": "Role",
+        "role_admin": "Admin",
+        "role_employee": "Employee",
+        "status_active": "Active",
+        "status_inactive": "Inactive",
+        "action_deactivate": "Deactivate",
+        "action_reactivate": "Reactivate",
+        "action_change_role": "Change Role",
+        "confirm_deactivate": "Deactivate this member?",
+        "adding": "Adding…",
+        "add_member": "Add Member",
+        "no_members": "No team members yet.",
+        "error_create": "Failed to add member.",
+        "error_update": "Failed to update member.",
+        "joined": "Joined",
+        "you": "You",
+        "team_nav": "Team"
     }
 }
