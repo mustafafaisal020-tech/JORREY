@@ -8,6 +8,8 @@ interface ShirtParallaxCardProps {
   title: string;
   description: string;
   price: string;
+  /** Original price before discount — shown struck-through when provided */
+  originalPrice?: string;
   imageUrl?: string;
   buyNowLabel?: string;
   onBuyNow?: () => void;
@@ -28,6 +30,7 @@ export function ShirtParallaxCard({
   title,
   description,
   price,
+  originalPrice,
   imageUrl,
   buyNowLabel = "Buy Now",
   onBuyNow,
@@ -109,7 +112,14 @@ export function ShirtParallaxCard({
       <div className="p-5 space-y-1.5">
         <h3 className="font-serif text-lg font-bold text-jorrey-black leading-snug">{title}</h3>
         <p className="text-sm text-jorrey-black/55 line-clamp-3 leading-relaxed">{description}</p>
-        <p className="text-base font-semibold text-jorrey-black pt-1">{price}</p>
+        <div className="flex items-center gap-2 pt-1">
+          <p className={`text-base font-semibold ${originalPrice ? "text-red-600" : "text-jorrey-black"}`}>
+            {price}
+          </p>
+          {originalPrice && (
+            <p className="text-sm text-gray-400 line-through">{originalPrice}</p>
+          )}
+        </div>
         {colorsDisplay}
         {shippingLabel && (
           <p className="text-[11px] text-teal-600 font-medium tracking-wide uppercase">

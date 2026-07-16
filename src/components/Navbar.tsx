@@ -7,6 +7,7 @@ import { useLocale } from "next-intl";
 import { ShoppingBag, User } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 import LanguageSwitcher from "./LanguageSwitcher";
+import CurrencySwitcher from "./CurrencySwitcher";
 import { useCart } from "./CartProvider";
 import { useUserLists } from "./UserListsProvider";
 import CustomerAccountModal from "./CustomerAccountModal";
@@ -72,10 +73,11 @@ export default function Navbar({ categories = [] }: NavbarProps) {
             })}
           </nav>
 
-          {/* Desktop right: install | language | cart | account */}
+          {/* Desktop right: install | language | currency | cart | account */}
           <div className="hidden md:flex items-center gap-5">
             <PWAInstallButton isRTL={isRTL} />
             <LanguageSwitcher />
+            <CurrencySwitcher />
             <button
               onClick={() => setOpen(true)}
               className="relative text-jorrey-white/70 hover:text-jorrey-gold transition-colors"
@@ -100,8 +102,9 @@ export default function Navbar({ categories = [] }: NavbarProps) {
             </button>
           </div>
 
-          {/* Mobile: language + cart + hamburger */}
+          {/* Mobile: currency + language + cart + hamburger */}
           <div className="md:hidden flex items-center gap-4">
+            <CurrencySwitcher />
             <LanguageSwitcher />
             <button
               onClick={() => setOpen(true)}

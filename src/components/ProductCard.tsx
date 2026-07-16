@@ -11,6 +11,7 @@ import type { Product } from "@/lib/product-types";
 import { categoryHasSizes, isLiquidCat, PRODUCT_COLORS } from "@/lib/product-types";
 import { useCart } from "./CartProvider";
 import { useUserLists } from "./UserListsProvider";
+import { useCurrency } from "./CurrencyProvider";
 
 export type { Product };
 
@@ -28,6 +29,7 @@ export default function ProductCard({
   const tp = useTranslations("product");
   const locale = useLocale();
   const isRTL = locale === "ar";
+  const { format, convert } = useCurrency();
   const { addItem } = useCart();
   const { user } = useUser();
   const { isFavorite, isWatched, toggleFavorite, toggleWatchlist } = useUserLists();
@@ -46,9 +48,10 @@ export default function ProductCard({
   const effectivePrice = hasOnSale && product.salePrice ? product.salePrice : product.price;
   const isOutOfStock = product.inStock === false;
 
+  // For the card's price slot: show sale + original when on sale
   const priceDisplay = hasOnSale && product.salePrice
-    ? `${currencySymbol}${product.salePrice.toLocaleString()}`
-    : `${currencySymbol}${product.price.toLocaleString()}`;
+    ? format(product.salePrice)
+    : format(product.price);
 
   const descriptionText = isRTL && product.summaryAr
     ? product.summaryAr
@@ -83,7 +86,7 @@ export default function ProductCard({
   const shippingLabel =
     !product.shippingCost || product.shippingCost === 0
       ? tp("free_shipping")
-      : `${tp("shipping_label")}: ${currencySymbol}${product.shippingCost.toLocaleString()}`;
+      : `${tp("shipping_label")}: ${format(product.shippingCost)}`;
 
   function handleBuyNow() {
     if (isOutOfStock) return;
@@ -97,7 +100,7 @@ export default function ProductCard({
       productId: product.id,
       name: product.name,
       nameAr: product.nameAr,
-      price: effectivePrice,
+      price: convert(effectivePrice),
       sku: product.sku,
       color: product.color,
       size: tp("one_size"),
@@ -185,6 +188,7 @@ export default function ProductCard({
         title={isRTL && product.nameAr ? product.nameAr : product.name}
         description={descriptionText}
         price={priceDisplay}
+        originalPrice={hasOnSale && product.salePrice ? format(product.price) : undefined}
         imageUrl={images[0]}
         buyNowLabel={isOutOfStock ? tp("badge_out_of_stock") : (isRTL ? "اشترِ الآن" : "Buy Now")}
         onBuyNow={handleBuyNow}

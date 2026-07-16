@@ -8,17 +8,19 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { useCart } from "./CartProvider";
 import CheckoutModal from "./CheckoutModal";
+import { useCurrency } from "./CurrencyProvider";
 import { useTranslations } from "next-intl";
 
 interface CartDrawerProps {
   whatsappNumber: string;
-  currencySymbol: string;
+  currencySymbol?: string; // kept for API compat, context drives formatting
 }
 
-export default function CartDrawer({ whatsappNumber, currencySymbol }: CartDrawerProps) {
+export default function CartDrawer({ whatsappNumber }: CartDrawerProps) {
   const { items, open, setOpen, removeItem, updateQty, total, count } = useCart();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const t = useTranslations("cart");
+  const { symbol: currencySymbol, format } = useCurrency();
 
   return (
     <>
@@ -67,6 +69,7 @@ export default function CartDrawer({ whatsappNumber, currencySymbol }: CartDrawe
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2">
+                        {/* item.price is already converted at add-to-cart time */}
                         <span className="text-sm font-medium">{currencySymbol}{(item.price * item.quantity).toLocaleString()}</span>
                         <button onClick={() => removeItem(item.cartId)} className="text-gray-300 hover:text-red-400 transition-colors">
                           <Trash2 size={13} />

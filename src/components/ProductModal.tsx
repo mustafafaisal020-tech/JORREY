@@ -8,6 +8,7 @@ import { Dialog, DialogPortal, DialogOverlay } from "@/components/ui/dialog";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { useCart } from "./CartProvider";
 import CheckoutModal from "./CheckoutModal";
+import { useCurrency } from "./CurrencyProvider";
 import type { Product } from "@/lib/product-types";
 import { categoryHasSizes, PRODUCT_COLORS } from "@/lib/product-types";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ export default function ProductModal({
   const tp = useTranslations("product");
   const locale = useLocale();
   const isRTL = locale === "ar";
+  const { format, convert } = useCurrency();
 
   const [currentImg, setCurrentImg] = useState(0);
   const [selectedSize, setSelectedSize] = useState("");
@@ -71,7 +73,7 @@ export default function ProductModal({
       productId: product.id,
       name: product.name,
       nameAr: product.nameAr,
-      price: effectivePrice,
+      price: convert(effectivePrice),
       sku: product.sku,
       color: product.color,
       size: hasSizes ? selectedSize : tp("one_size"),
@@ -186,22 +188,22 @@ export default function ProductModal({
                       </h2>
                       {hasOnSale && (
                         <span className="flex-shrink-0 bg-red-600 text-white text-[9px] font-bold tracking-widest uppercase px-2 py-1 mt-1">
-                          SALE
+                          {tp("badge_sale")}
                         </span>
                       )}
                     </div>
                     {hasOnSale && product.salePrice ? (
                       <div className="flex items-center gap-3">
                         <p className="text-[1.15rem] text-red-600 font-medium tracking-wide">
-                          {currencySymbol}{product.salePrice.toLocaleString()}
+                          {format(product.salePrice)}
                         </p>
                         <p className="text-base text-gray-400 font-light line-through">
-                          {currencySymbol}{product.price.toLocaleString()}
+                          {format(product.price)}
                         </p>
                       </div>
                     ) : (
                       <p className="text-[1.15rem] text-[#0C0C0C] font-light tracking-wide">
-                        {currencySymbol}{product.price.toLocaleString()}
+                        {format(product.price)}
                       </p>
                     )}
                   </div>

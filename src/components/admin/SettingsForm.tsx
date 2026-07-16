@@ -34,6 +34,9 @@ export default function SettingsForm({
 }) {
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState("");
+  const [iqRate, setIqRate] = useState<string>(
+    String(settings.exchangeRates?.IQD ?? 1310)
+  );
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>(settings.socialLinks ?? []);
   const [footer, setFooter] = useState<FooterSettings>(settings.footer ?? {});
   const [collectionsTitle, setCollectionsTitle] = useState(settings.collectionsTitle ?? "");
@@ -101,6 +104,7 @@ export default function SettingsForm({
       collectionsDescription: collectionsDescription || undefined,
       collectionsDescriptionAr: collectionsDescriptionAr || undefined,
       saleCountdown: countdown,
+      exchangeRates: { IQD: parseFloat(iqRate) || 1310 },
     };
     const res = await fetch("/api/settings", {
       method: "PUT",
@@ -278,13 +282,30 @@ export default function SettingsForm({
         <Separator />
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label className="text-xs tracking-widests uppercase text-gray-500">Code</Label>
+            <Label className="text-xs tracking-widests uppercase text-gray-500">Base Currency Code</Label>
             <Input {...register("currency")} placeholder="USD" className="rounded-none" />
+            <p className="text-xs text-gray-400">Prices are stored in this currency (USD recommended).</p>
           </div>
           <div className="space-y-2">
             <Label className="text-xs tracking-widests uppercase text-gray-500">Symbol</Label>
             <Input {...register("currencySymbol")} placeholder="$" className="rounded-none" />
           </div>
+        </div>
+        <div className="space-y-2">
+          <Label className="text-xs tracking-widests uppercase text-gray-500">USD → IQD Rate (د.ع per $1)</Label>
+          <Input
+            type="number"
+            min="1"
+            step="1"
+            value={iqRate}
+            onChange={(e) => setIqRate(e.target.value)}
+            placeholder="1310"
+            className="rounded-none max-w-xs font-mono"
+          />
+          <p className="text-xs text-gray-400">
+            Customers who select IQD will see prices multiplied by this rate.
+            Current Central Bank of Iraq rate is ~1,310 IQD per USD.
+          </p>
         </div>
       </div>
 

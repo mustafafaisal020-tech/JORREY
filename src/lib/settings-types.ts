@@ -73,4 +73,6 @@ export interface SiteSettings {
   collectionsDescription?: string;
   collectionsDescriptionAr?: string;
   saleCountdown?: SaleCountdown;
+  /** Admin-set exchange rates relative to USD base. e.g. { IQD: 1310 } */
+  exchangeRates?: Record<string, number>;
 }

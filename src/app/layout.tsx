@@ -4,8 +4,10 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import UserListsProvider from "@/components/UserListsProvider";
+import CurrencyProvider from "@/components/CurrencyProvider";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
 import PushSubscriptionSetup from "@/components/PushSubscriptionSetup";
+import { getSettings } from "@/lib/settings";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -59,6 +61,8 @@ export default async function RootLayout({
   const locale = await getLocale();
   const messages = await getMessages();
   const isRTL = locale === "ar";
+  const settings = await getSettings();
+  const exchangeRates = settings.exchangeRates ?? {};
 
   return (
     <ClerkProvider>
@@ -78,11 +82,13 @@ export default async function RootLayout({
         </head>
         <body className="min-h-full flex flex-col">
           <NextIntlClientProvider locale={locale} messages={messages}>
-            <UserListsProvider>
-              {children}
-            </UserListsProvider>
-            <PWAInstallBanner />
-            <PushSubscriptionSetup />
+            <CurrencyProvider exchangeRates={exchangeRates}>
+              <UserListsProvider>
+                {children}
+              </UserListsProvider>
+              <PWAInstallBanner />
+              <PushSubscriptionSetup />
+            </CurrencyProvider>
           </NextIntlClientProvider>
         </body>
       </html>
